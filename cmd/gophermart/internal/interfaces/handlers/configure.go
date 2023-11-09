@@ -10,6 +10,7 @@ func UserRouter(uh *HandlerUser) chi.Router {
 		r.Post("/login", uh.Login)
 		r.Post("/orders", uh.AddOrder)
 		r.Get("/orders", uh.GetOrders)
+		r.Get("/withdrawals", uh.GetWithdrawals)
 	})
 
 	return router

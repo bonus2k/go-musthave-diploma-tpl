@@ -1,4 +1,4 @@
-package loggers
+package internal
 
 import (
 	"fmt"
@@ -20,7 +20,6 @@ var encoderConfig = zapcore.EncoderConfig{
 	NameKey:        "logger",
 	CallerKey:      "caller",
 	MessageKey:     "msg",
-	StacktraceKey:  "stacktrace",
 	LineEnding:     zapcore.DefaultLineEnding,
 	EncodeLevel:    zapcore.CapitalLevelEncoder,
 	EncodeTime:     customTimeEncoder,

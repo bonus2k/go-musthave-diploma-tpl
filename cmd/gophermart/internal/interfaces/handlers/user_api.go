@@ -6,14 +6,12 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"github.com/bonus2k/go-musthave-diploma-tpl/cmd/gophermart/internal/loggers"
-	"github.com/bonus2k/go-musthave-diploma-tpl/cmd/gophermart/internal/models/dto"
+	"github.com/bonus2k/go-musthave-diploma-tpl/cmd/gophermart/internal"
 	"github.com/bonus2k/go-musthave-diploma-tpl/cmd/gophermart/internal/repositories"
 	"github.com/bonus2k/go-musthave-diploma-tpl/cmd/gophermart/internal/services"
 	"go.uber.org/zap"
 	"io"
 	"net/http"
-	"strconv"
 )
 
 type HandlerUser struct {
@@ -31,17 +29,17 @@ func (hu *HandlerUser) RegisterUser(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	loggers.Log.Debug("decoding message")
-	var user dto.User
+	internal.Log.Debug("decoding message")
+	var user internal.UserDto
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&user); err != nil {
-		loggers.Logf.Errorf("cannot decode request JSON body %v", err)
+		internal.Logf.Errorf("cannot decode request JSON body %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	newUser, err := hu.us.CreateNewUser(r.Context(), &user)
 	if err != nil {
-		loggers.Log.Error("user hasn't been created", zap.Error(err))
+		internal.Log.Error("user hasn't been created", zap.Error(err))
 		if errors.Is(err, services.ErrIllegalUserArgument) {
 			w.WriteHeader(http.StatusBadRequest)
 			return
@@ -63,17 +61,17 @@ func (hu *HandlerUser) Login(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	loggers.Log.Debug("decoding message")
-	var user dto.User
+	internal.Log.Debug("decoding message")
+	var user internal.UserDto
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&user); err != nil {
-		loggers.Logf.Errorf("cannot decode request JSON body %v", err)
+		internal.Logf.Errorf("cannot decode request JSON body %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	userID, err := hu.us.LoginUser(r.Context(), user)
 	if err != nil {
-		loggers.Log.Error("authorization fault", zap.Error(err))
+		internal.Log.Error("authorization fault", zap.Error(err))
 		if errors.Is(err, services.ErrWrongAuth) || errors.Is(err, repositories.ErrUserNotFound) {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
@@ -93,17 +91,17 @@ func (hu *HandlerUser) AddOrder(w http.ResponseWriter, r *http.Request) {
 	}
 	userID, err := readSigned(r, hu.secret)
 	if err != nil {
-		loggers.Log.Error("cookie is wrong", zap.Error(err))
+		internal.Log.Error("cookie is wrong", zap.Error(err))
 		w.WriteHeader(http.StatusUnauthorized)
 	}
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		loggers.Log.Error("can't get body", zap.Error(err))
+		internal.Log.Error("can't get body", zap.Error(err))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	if err = hu.us.AddOrder(r.Context(), userID, string(body)); err != nil {
-		loggers.Log.Error("add order", zap.Error(err))
+		internal.Log.Error("add order", zap.Error(err))
 		if errors.Is(err, repositories.ErrOrderIsExistThisUser) {
 			w.WriteHeader(http.StatusOK)
 			return
@@ -125,7 +123,7 @@ func (hu *HandlerUser) AddOrder(w http.ResponseWriter, r *http.Request) {
 func (hu *HandlerUser) GetOrders(w http.ResponseWriter, r *http.Request) {
 	userID, err := readSigned(r, hu.secret)
 	if err != nil {
-		loggers.Log.Error("cookie is wrong", zap.Error(err))
+		internal.Log.Error("cookie is wrong", zap.Error(err))
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
@@ -139,16 +137,37 @@ func (hu *HandlerUser) GetOrders(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
+	w.Header().Set("Content-Type", "application/json")
+	encoder := json.NewEncoder(w)
+	if err := encoder.Encode(orders); err != nil {
+		internal.Log.Error("error encoding response", zap.Error(err))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
 
-	ordersDto := make([]dto.Order, 0)
-	for _, order := range *orders {
-		d := dto.Order{Number: strconv.FormatInt(order.Number, 10), Status: string(order.Status), Accrual: order.Accrual, Upload: order.CreateAt}
-		ordersDto = append(ordersDto, d)
+func (hu *HandlerUser) GetWithdrawals(w http.ResponseWriter, r *http.Request) {
+	userID, err := readSigned(r, hu.secret)
+	if err != nil {
+		internal.Log.Error("cookie is wrong", zap.Error(err))
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	withdrawals, err := hu.us.GetWithdrawals(r.Context(), userID)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if len(*withdrawals) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	encoder := json.NewEncoder(w)
-	if err := encoder.Encode(ordersDto); err != nil {
-		loggers.Log.Error("error encoding response", zap.Error(err))
+	if err := encoder.Encode(withdrawals); err != nil {
+		internal.Log.Error("error encoding response", zap.Error(err))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

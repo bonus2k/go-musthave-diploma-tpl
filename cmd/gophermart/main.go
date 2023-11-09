@@ -3,13 +3,16 @@ package main
 import (
 	"crypto/rand"
 	"fmt"
+	"github.com/bonus2k/go-musthave-diploma-tpl/cmd/gophermart/internal"
+	"github.com/bonus2k/go-musthave-diploma-tpl/cmd/gophermart/internal/interfaces/clients"
 	"github.com/bonus2k/go-musthave-diploma-tpl/cmd/gophermart/internal/interfaces/handlers"
-	"github.com/bonus2k/go-musthave-diploma-tpl/cmd/gophermart/internal/loggers"
 	"github.com/bonus2k/go-musthave-diploma-tpl/cmd/gophermart/internal/migrations"
 	"github.com/bonus2k/go-musthave-diploma-tpl/cmd/gophermart/internal/repositories"
 	"github.com/bonus2k/go-musthave-diploma-tpl/cmd/gophermart/internal/services"
+	"github.com/go-resty/resty/v2"
 	"net/http"
 	"os"
+	"time"
 )
 
 func main() {
@@ -18,20 +21,20 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := loggers.NewLogger(cfg.LogLevel); err != nil {
-		loggers.Logf.Errorf("can't create logger %v", err)
+	if err := internal.NewLogger(cfg.LogLevel); err != nil {
+		internal.Logf.Errorf("can't create logger %v", err)
 		os.Exit(1)
 	}
 
 	err := migrations.Start(cfg.DataBaseURI)
 	if err != nil {
-		loggers.Logf.Errorf("migration of data to DB is failed %v", err)
+		internal.Logf.Errorf("migration of data to DB is failed %v", err)
 		os.Exit(1)
 	}
 
 	store, err := repositories.NewStore(cfg.DataBaseURI)
 	if err != nil {
-		loggers.Logf.Errorf("can't connected to DB %v", err)
+		internal.Logf.Errorf("can't connected to DB %v", err)
 		os.Exit(1)
 	}
 
@@ -39,16 +42,44 @@ func main() {
 	secretKey := make([]byte, 16)
 	_, err = rand.Read(secretKey)
 	if err != nil {
-		loggers.Logf.Errorf("it create secretKey has been finished is wrong %v", err)
+		internal.Logf.Errorf("it create secretKey has been finished is wrong %v", err)
 		os.Exit(1)
 	}
+
+	client := resty.New()
+	accrual := clients.NewClientAccrual(client, "http://localhost:8081")
+	worker := clients.NewPoolWorker(accrual, service)
+	ticker := time.NewTicker(5 * time.Minute)
+
+	go func() {
+		worker.StarIntegration(5)
+		time.Sleep(1 * time.Minute)
+		close(worker.Done)
+	}()
+
+	go func() {
+		for range ticker.C {
+			worker.StarIntegration(5)
+			time.Sleep(1 * time.Minute)
+			close(worker.Done)
+		}
+	}()
+
+	//resp, err := client.R().
+	//	SetPathParams(map[string]string{"g": "get", "url": "httpbin"}).
+	//	EnableTrace().
+	//	Get("https://{url}.org/{g}")
+	//if err != nil {
+	//	fmt.Println(err)
+	//}
+
 	handlerUser := handlers.NewHandlerUser(service, secretKey)
 	router := handlers.UserRouter(handlerUser)
-	loggers.Logf.Infof("starting HTTP server on address: %s", cfg.ConnectAddr)
-
+	internal.Logf.Infof("starting HTTP server on address: %s", cfg.ConnectAddr)
 	err = http.ListenAndServe(cfg.ConnectAddr, router)
 	if err != nil {
-		loggers.Logf.Errorf("error HTTP server %v", err)
+		internal.Logf.Errorf("error HTTP server %v", err)
 		os.Exit(1)
 	}
+
 }

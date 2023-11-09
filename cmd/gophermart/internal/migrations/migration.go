@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/bonus2k/go-musthave-diploma-tpl/cmd/gophermart/internal/loggers"
+	"github.com/bonus2k/go-musthave-diploma-tpl/cmd/gophermart/internal"
 	"github.com/bonus2k/go-musthave-diploma-tpl/cmd/gophermart/internal/utils"
 	"github.com/golang-migrate/migrate/v4"
 	mpgx "github.com/golang-migrate/migrate/v4/database/pgx/v5"
@@ -36,7 +36,7 @@ func Start(connect string) error {
 	if err = migrateSQL(dataBase); err != nil {
 		panic(err)
 	}
-	loggers.Log.Info("migration successfully finished")
+	internal.Log.Info("migration successfully finished")
 	return nil
 }
 
