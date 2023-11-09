@@ -3,7 +3,7 @@ CREATE TABLE orders
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     create_at TIMESTAMPTZ NOT NULL,
     number BIGINT NOT NULL UNIQUE,
-    accrual INTEGER,
+    accrual FLOAT,
     status VARCHAR(15) NOT NULL,
     user_id UUID NOT NULL,
     CONSTRAINT fk_customer

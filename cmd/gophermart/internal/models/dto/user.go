@@ -13,7 +13,7 @@ type User struct {
 type Order struct {
 	Number  string    `json:"number"`
 	Status  string    `json:"status"`
-	Accrual int64     `json:"accrual,omitempty"`
+	Accrual float32   `json:"accrual"`
 	Upload  time.Time `json:"uploaded_at"`
 }
 

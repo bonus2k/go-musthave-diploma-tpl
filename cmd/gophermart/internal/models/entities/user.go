@@ -10,14 +10,14 @@ type User struct {
 	CreateAt time.Time `db:"create_at"`
 	Login    string    `db:"login"`
 	Password string    `db:"password"`
-	Bill     int       `db:"bill"`
+	Bill     float32   `db:"bill"`
 }
 
 type Order struct {
 	ID       uuid.UUID `db:"id"`
 	CreateAt time.Time `db:"create_at"`
 	Number   int64     `db:"number"`
-	Accrual  int64     `db:"accrual"`
+	Accrual  float32   `db:"accrual"`
 	Status   value     `db:"status"`
 	UserID   uuid.UUID `db:"user_id"`
 }
@@ -26,7 +26,7 @@ type Withdraw struct {
 	ID       uuid.UUID `db:"id"`
 	CreateAt time.Time `db:"create_at"`
 	Order    int64     `db:"order_num"`
-	Sum      int64     `db:"sum"`
+	Sum      float32   `db:"sum"`
 	UserID   uuid.UUID `db:"user_id"`
 }
 
