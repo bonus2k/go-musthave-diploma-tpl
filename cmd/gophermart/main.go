@@ -47,7 +47,7 @@ func main() {
 	}
 
 	client := resty.New()
-	accrual := clients.NewClientAccrual(client, "http://localhost:8081")
+	accrual := clients.NewClientAccrual(client, cfg.AccrualURI)
 	ticker := time.NewTicker(5 * time.Second)
 	worker := clients.NewPoolWorker(accrual, service)
 	go func() {
