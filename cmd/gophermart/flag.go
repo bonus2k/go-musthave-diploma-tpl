@@ -19,7 +19,7 @@ func parseFlags() error {
 	flag.StringVar(&cfg.ConnectAddr, "a", "localhost:8080", "address to run HTTP server")
 	flag.StringVar(&cfg.DataBaseURI, "d", "", "URI to database")
 	flag.StringVar(&cfg.AccrualURI, "r", "", "URI to accrual system")
-	flag.StringVar(&cfg.LogLevel, "l", "info", "Log level")
+	flag.StringVar(&cfg.LogLevel, "l", "debug", "Log level")
 
 	if err := env.Parse(&cfg); err != nil {
 		return fmt.Errorf("can't parse env; %w", err)
