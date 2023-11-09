@@ -13,6 +13,7 @@ import (
 	"go.uber.org/zap"
 	"io"
 	"net/http"
+	"strconv"
 )
 
 type HandlerUser struct {
@@ -141,7 +142,7 @@ func (hu *HandlerUser) GetOrders(w http.ResponseWriter, r *http.Request) {
 
 	ordersDto := make([]dto.Order, 0)
 	for _, order := range *orders {
-		d := dto.Order{Number: order.Number, Status: string(order.Status), Accrual: order.Accrual, Upload: order.CreateAt}
+		d := dto.Order{Number: strconv.FormatInt(order.Number, 10), Status: string(order.Status), Accrual: order.Accrual, Upload: order.CreateAt}
 		ordersDto = append(ordersDto, d)
 	}
 	w.Header().Set("Content-Type", "application/json")
