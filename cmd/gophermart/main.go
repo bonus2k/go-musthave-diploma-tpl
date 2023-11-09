@@ -48,30 +48,11 @@ func main() {
 
 	client := resty.New()
 	accrual := clients.NewClientAccrual(client, "http://localhost:8081")
+	ticker := time.NewTicker(5 * time.Second)
 	worker := clients.NewPoolWorker(accrual, service)
-	ticker := time.NewTicker(5 * time.Minute)
-
 	go func() {
-		worker.StarIntegration(5)
-		time.Sleep(1 * time.Minute)
-		close(worker.Done)
+		worker.StarIntegration(5, ticker)
 	}()
-
-	go func() {
-		for range ticker.C {
-			worker.StarIntegration(5)
-			time.Sleep(1 * time.Minute)
-			close(worker.Done)
-		}
-	}()
-
-	//resp, err := client.R().
-	//	SetPathParams(map[string]string{"g": "get", "url": "httpbin"}).
-	//	EnableTrace().
-	//	Get("https://{url}.org/{g}")
-	//if err != nil {
-	//	fmt.Println(err)
-	//}
 
 	handlerUser := handlers.NewHandlerUser(service, secretKey)
 	router := handlers.UserRouter(handlerUser)
