@@ -73,7 +73,7 @@ type AccrualDto struct {
 type WithdrawDto struct {
 	Order    string    `json:"order"`
 	Sum      float32   `json:"sum"`
-	CreateAt time.Time `json:"processed_at"`
+	CreateAt time.Time `json:"processed_at,omitempty"`
 }
 
 type Balance struct {
