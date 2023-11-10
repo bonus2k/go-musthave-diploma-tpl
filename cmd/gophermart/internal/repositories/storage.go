@@ -166,16 +166,20 @@ func (store *Store) UpdateOrder(ctx context.Context, order *internal.Order) erro
 }
 
 func (store *Store) SaveWithdrawal(ctx context.Context, withdrawal *internal.Withdraw) error {
-	timeout, cancelFunc := context.WithTimeout(ctx, time.Second*5)
+	timeout, cancelFunc := context.WithTimeout(ctx, time.Second*5000)
 	defer cancelFunc()
 	tx := store.db.MustBeginTx(timeout, nil)
 	defer tx.Commit()
 	var user internal.User
-	tx.GetContext(timeout, &user, "SELECT * FROM users WHERE id=$1", withdrawal.UserID)
+	err := tx.GetContext(timeout, &user, "SELECT * FROM users WHERE id=$1", withdrawal.UserID)
+	if err != nil {
+		tx.Rollback()
+		return fmt.Errorf("can't get user from db %w", err)
+	}
 	if user.Bill < withdrawal.Sum {
 		return ErrNotEnoughAmount
 	}
-	_, err := tx.ExecContext(timeout, `INSERT INTO withdrawals (id, create_at, order_num, sum, user_id) VALUES (:id, :create_at, :order_num, :sum, :user_id)`, withdrawal)
+	_, err = tx.NamedExecContext(timeout, `INSERT INTO withdrawals (id, create_at, order_num, sum, user_id) VALUES (:id, :create_at, :order_num, :sum, :user_id)`, withdrawal)
 	if err != nil {
 		tx.Rollback()
 		return fmt.Errorf("can't save withdrawal to db %w", err)

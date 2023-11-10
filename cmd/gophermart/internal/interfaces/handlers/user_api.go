@@ -212,6 +212,7 @@ func (hu *HandlerUser) AddWithdraw(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err = hu.us.AddWithdraw(r.Context(), dto, userID); err != nil {
+		internal.Log.Error("add withdraw", zap.Error(err))
 		if errors.Is(err, repositories.ErrNotEnoughAmount) {
 			w.WriteHeader(http.StatusPaymentRequired)
 			return
