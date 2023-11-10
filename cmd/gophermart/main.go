@@ -46,17 +46,18 @@ func main() {
 		os.Exit(1)
 	}
 
+	internal.Logf.Infof("starting integration to: %s", cfg.AccrualURI)
 	client := resty.New()
 	accrual := clients.NewClientAccrual(client, cfg.AccrualURI)
 	ticker := time.NewTicker(5 * time.Second)
-	worker := clients.NewPoolWorker(accrual, service)
+	worker := services.NewPoolWorker(accrual, service)
 	go func() {
 		worker.StarIntegration(5, ticker)
 	}()
 
+	internal.Logf.Infof("starting HTTP server on address: %s", cfg.ConnectAddr)
 	handlerUser := handlers.NewHandlerUser(service, secretKey)
 	router := handlers.UserRouter(handlerUser)
-	internal.Logf.Infof("starting HTTP server on address: %s", cfg.ConnectAddr)
 	err = http.ListenAndServe(cfg.ConnectAddr, router)
 	if err != nil {
 		internal.Logf.Errorf("error HTTP server %v", err)

@@ -1,22 +1,22 @@
-package clients
+package services
 
 import (
 	"errors"
 	"fmt"
 	"github.com/bonus2k/go-musthave-diploma-tpl/cmd/gophermart/internal"
-	"github.com/bonus2k/go-musthave-diploma-tpl/cmd/gophermart/internal/services"
+	"github.com/bonus2k/go-musthave-diploma-tpl/cmd/gophermart/internal/interfaces/clients"
 	"go.uber.org/zap"
 	"time"
 )
 
 type PoolWorker struct {
-	client      *ClientAccrual
-	serviceUser *services.UserService
+	client      *clients.ClientAccrual
+	serviceUser *UserService
 	orderIn     chan string
 	Err         chan error
 }
 
-func NewPoolWorker(client *ClientAccrual, serviceUser *services.UserService) *PoolWorker {
+func NewPoolWorker(client *clients.ClientAccrual, serviceUser *UserService) *PoolWorker {
 	ordersIn := make(chan string, 10)
 	err := make(chan error)
 	return &PoolWorker{client: client, serviceUser: serviceUser, orderIn: ordersIn, Err: err}
@@ -47,7 +47,7 @@ func (p *PoolWorker) StarIntegration(countWorker int, requestTime *time.Ticker) 
 
 	for err := range p.Err {
 		internal.Log.Error("error integration", zap.Error(err))
-		if errors.Is(err, ErrTooManyRequests) {
+		if errors.Is(err, clients.ErrTooManyRequests) {
 			go func() {
 				for _, pause := range pauses {
 					ch := pause

@@ -20,7 +20,6 @@ type HandlerUser struct {
 }
 
 func NewHandlerUser(service *services.UserService, secretKey []byte) *HandlerUser {
-
 	return &HandlerUser{us: service, secret: secretKey}
 }
 
@@ -171,6 +170,59 @@ func (hu *HandlerUser) GetWithdrawals(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	w.WriteHeader(http.StatusOK)
+}
+
+func (hu *HandlerUser) GetBalance(w http.ResponseWriter, r *http.Request) {
+	userID, err := readSigned(r, hu.secret)
+	if err != nil {
+		internal.Log.Error("cookie is wrong", zap.Error(err))
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	balance, err := hu.us.GetBalance(r.Context(), userID)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	encoder := json.NewEncoder(w)
+	if err := encoder.Encode(balance); err != nil {
+		internal.Log.Error("error encoding response", zap.Error(err))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+func (hu *HandlerUser) AddWithdraw(w http.ResponseWriter, r *http.Request) {
+	userID, err := readSigned(r, hu.secret)
+	if err != nil {
+		internal.Log.Error("cookie is wrong", zap.Error(err))
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	internal.Log.Debug("decoding message")
+	var dto internal.WithdrawDto
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&dto); err != nil {
+		internal.Logf.Errorf("cannot decode request JSON body %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if err = hu.us.AddWithdraw(r.Context(), dto, userID); err != nil {
+		if errors.Is(err, repositories.ErrNotEnoughAmount) {
+			w.WriteHeader(http.StatusPaymentRequired)
+			return
+		}
+		if errors.Is(err, services.ErrIllegalOrder) {
+			w.WriteHeader(http.StatusUnprocessableEntity)
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	w.WriteHeader(http.StatusOK)
 }
 

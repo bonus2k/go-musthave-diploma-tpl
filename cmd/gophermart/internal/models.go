@@ -76,6 +76,11 @@ type WithdrawDto struct {
 	CreateAt time.Time `json:"processed_at"`
 }
 
+type Balance struct {
+	Current   float32 `json:"current"`
+	Withdrawn float32 `json:"withdrawn"`
+}
+
 func (t *WithdrawDto) MarshalJSON() ([]byte, error) {
 	type Alias WithdrawDto
 	return json.Marshal(&struct {

@@ -143,6 +143,50 @@ func (us *UserService) GetWithdrawals(ctx context.Context, id string) (*[]intern
 	return &dtos, nil
 }
 
+func (us *UserService) GetBalance(ctx context.Context, id string) (*internal.Balance, error) {
+	userID, err := uuid.Parse(id)
+	if err != nil {
+		return nil, err
+	}
+	withdrawals, err := us.db.GetWithdrawals(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	user, err := us.db.GetUser(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	var withdrawn float32
+	for _, w := range *withdrawals {
+		withdrawn = withdrawn + w.Sum
+	}
+
+	return &internal.Balance{Current: user.Bill, Withdrawn: withdrawn}, nil
+}
+
+func (us *UserService) AddWithdraw(ctx context.Context, dto internal.WithdrawDto, id string) error {
+	userID, err := uuid.Parse(id)
+	if err != nil {
+		return err
+	}
+
+	luna, ok := isLuna(dto.Order)
+	if !ok {
+		return ErrIllegalOrder
+	}
+
+	withdraw := &internal.Withdraw{
+		ID:       uuid.New(),
+		CreateAt: time.Now(),
+		Order:    int64(luna),
+		Sum:      dto.Sum,
+		UserID:   userID,
+	}
+
+	return us.db.SaveWithdrawal(ctx, withdraw)
+}
+
 func isLuna(order string) (int, bool) {
 	number, err := strconv.Atoi(order)
 	if err != nil {

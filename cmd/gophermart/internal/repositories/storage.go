@@ -165,7 +165,7 @@ func (store *Store) UpdateOrder(ctx context.Context, order *internal.Order) erro
 	return nil
 }
 
-func (store *Store) SaveWithdrawal(ctx context.Context, withdrawal internal.Withdraw) error {
+func (store *Store) SaveWithdrawal(ctx context.Context, withdrawal *internal.Withdraw) error {
 	timeout, cancelFunc := context.WithTimeout(ctx, time.Second*5)
 	defer cancelFunc()
 	tx := store.db.MustBeginTx(timeout, nil)
@@ -200,6 +200,18 @@ func (store *Store) GetWithdrawals(ctx context.Context, userID uuid.UUID) (*[]in
 		return nil, fmt.Errorf("can't get orders from db %w", err)
 	}
 	return &withdrawals, nil
+}
+
+func (store *Store) GetUser(ctx context.Context, id uuid.UUID) (*internal.User, error) {
+	timeout, cancelFunc := context.WithTimeout(ctx, time.Second*5)
+	defer cancelFunc()
+
+	var user internal.User
+	err := store.db.GetContext(timeout, &user, `SELECT * FROM users WHERE id=$1`, id)
+	if err != nil {
+		return nil, fmt.Errorf("can't get user from db %w", err)
+	}
+	return &user, nil
 }
 
 var ErrUserIsExist = errors.New("user is exist")
