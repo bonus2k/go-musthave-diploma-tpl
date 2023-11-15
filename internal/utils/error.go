@@ -2,7 +2,7 @@ package utils
 
 import (
 	"fmt"
-	"github.com/bonus2k/go-musthave-diploma-tpl/cmd/gophermart/internal"
+	"github.com/bonus2k/go-musthave-diploma-tpl/internal"
 	"time"
 )
 
@@ -19,7 +19,7 @@ func RetryAfterError(f func() error) (err error) {
 		}
 
 		time.Sleep(sleep)
-		internal.Logf.Debugf("Attempt %d, retrying after error: %v\n", i, err)
+		internal.Logf.Debugf("Attempt %d, retrying after error: %v", i, err)
 		sleep = sleep + 2*time.Second
 
 	}

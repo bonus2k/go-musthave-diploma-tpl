@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/bonus2k/go-musthave-diploma-tpl/cmd/gophermart/internal"
+	"github.com/bonus2k/go-musthave-diploma-tpl/internal"
 	"github.com/google/uuid"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
@@ -16,38 +16,26 @@ type Store struct {
 	db *sqlx.DB
 }
 
-var s *Store
-
-func NewStore(databaseURI string) (*Store, error) {
-	if s != nil {
-		return s, nil
-	}
-	open, err := sqlx.Open("pgx", databaseURI)
-	if err != nil {
-		return nil, fmt.Errorf("can't create connection to DB %w", err)
-	}
-	s = &Store{db: open}
-	return s, nil
+func NewStore(db *sqlx.DB) *Store {
+	return &Store{db: db}
 }
 
 func (store *Store) CheckConnection() error {
-	ctx, cancelFunc := context.WithTimeout(context.Background(), time.Second*5)
+	ctx, cancelFunc := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFunc()
 	return store.db.PingContext(ctx)
 }
 
 func (store *Store) AddUser(ctx context.Context, user *internal.User) error {
-	timeout, cancelFunc := context.WithTimeout(ctx, time.Second*5)
-	defer cancelFunc()
 	var count int
-	err := store.db.GetContext(timeout, &count, "SELECT count(*) FROM users WHERE login=$1", user.Login)
+	err := store.db.GetContext(ctx, &count, "SELECT count(*) FROM users WHERE login=$1", user.Login)
 	if err != nil {
 		return fmt.Errorf("can't check user is exist %w", err)
 	}
 	if count > 0 {
 		return ErrUserIsExist
 	}
-	_, err = store.db.NamedExecContext(timeout,
+	_, err = store.db.NamedExecContext(ctx,
 		`INSERT INTO users (id, create_at, login, password, bill) VALUES (:id, :create_at, :login, :password, :bill)`,
 		user)
 	if err != nil {
@@ -57,10 +45,8 @@ func (store *Store) AddUser(ctx context.Context, user *internal.User) error {
 }
 
 func (store *Store) FindUserByLogin(ctx context.Context, login string) (*internal.User, error) {
-	timeout, cancelFunc := context.WithTimeout(ctx, time.Second*5)
-	defer cancelFunc()
 	var user internal.User
-	err := store.db.GetContext(timeout, &user, "SELECT * FROM users WHERE login=$1", login)
+	err := store.db.GetContext(ctx, &user, "SELECT * FROM users WHERE login=$1", login)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrUserNotFound
@@ -71,10 +57,8 @@ func (store *Store) FindUserByLogin(ctx context.Context, login string) (*interna
 }
 
 func (store *Store) AddOrder(ctx context.Context, order *internal.Order) (*internal.Order, error) {
-	timeout, cancelFunc := context.WithTimeout(ctx, time.Second*5)
-	defer cancelFunc()
 	var existOrder internal.Order
-	err := store.db.GetContext(timeout,
+	err := store.db.GetContext(ctx,
 		&existOrder,
 		`SELECT * FROM orders WHERE number = $1`,
 		order.Number)
@@ -88,7 +72,7 @@ func (store *Store) AddOrder(ctx context.Context, order *internal.Order) (*inter
 			return nil, ErrOrderIsExistAnotherUser
 		}
 	}
-	_, err = store.db.NamedExecContext(timeout, "INSERT INTO orders (id, create_at, number, accrual, status, user_id) "+
+	_, err = store.db.NamedExecContext(ctx, "INSERT INTO orders (id, create_at, number, accrual, status, user_id) "+
 		"VALUES (:id, :create_at, :number, :accrual, :status, :user_id)", order)
 	if err != nil {
 		return nil, err
@@ -97,10 +81,8 @@ func (store *Store) AddOrder(ctx context.Context, order *internal.Order) (*inter
 }
 
 func (store *Store) GetOrders(ctx context.Context, userID uuid.UUID) (*[]internal.Order, error) {
-	timeout, cancelFunc := context.WithTimeout(ctx, time.Second*5)
-	defer cancelFunc()
 	var orders []internal.Order
-	err := store.db.SelectContext(timeout, &orders, `SELECT * FROM orders WHERE user_id=$1 
+	err := store.db.SelectContext(ctx, &orders, `SELECT * FROM orders WHERE user_id=$1 
                      ORDER BY create_at DESC`, userID)
 	if err != nil {
 		return nil, fmt.Errorf("can't get orders from db %w", err)
@@ -109,15 +91,13 @@ func (store *Store) GetOrders(ctx context.Context, userID uuid.UUID) (*[]interna
 }
 
 func (store *Store) GetOrder(ctx context.Context, login string, number int64) (*internal.Order, error) {
-	timeout, cancelFunc := context.WithTimeout(ctx, time.Second*5)
-	defer cancelFunc()
 	var user internal.User
-	err := store.db.SelectContext(timeout, &user, `SELECT * FROM users WHERE login=$1`, login)
+	err := store.db.SelectContext(ctx, &user, `SELECT * FROM users WHERE login=$1`, login)
 	if err != nil {
 		return nil, fmt.Errorf("can't get user from db %w", err)
 	}
 	var orders internal.Order
-	err = store.db.SelectContext(timeout, &orders, `SELECT * FROM orders WHERE user_id=$1 AND number=$2`,
+	err = store.db.SelectContext(ctx, &orders, `SELECT * FROM orders WHERE user_id=$1 AND number=$2`,
 		user.ID, number)
 	if err != nil {
 		return nil, fmt.Errorf("can't get orders from db %w", err)
@@ -126,11 +106,9 @@ func (store *Store) GetOrder(ctx context.Context, login string, number int64) (*
 }
 
 func (store *Store) GetOrdersNotProcessed(ctx context.Context) (*[]internal.Order, error) {
-	timeout, cancelFunc := context.WithTimeout(ctx, time.Second*5)
-	defer cancelFunc()
 	var orders []internal.Order
-	err := store.db.SelectContext(timeout, &orders, `SELECT * FROM orders 
-         WHERE status != 'INVALID' AND status != 'PROCESSED'`)
+	err := store.db.SelectContext(ctx, &orders, `SELECT * FROM orders 
+         WHERE status != 'OrderStatusInvalid' AND status != 'OrderStatusProcessed'`)
 	if err != nil {
 		return nil, fmt.Errorf("can't get orders from db %w", err)
 	}
@@ -138,67 +116,60 @@ func (store *Store) GetOrdersNotProcessed(ctx context.Context) (*[]internal.Orde
 }
 
 func (store *Store) UpdateOrder(ctx context.Context, order *internal.Order) error {
-	timeout, cancelFunc := context.WithTimeout(ctx, time.Second*5)
-	defer cancelFunc()
-	tx := store.db.MustBeginTx(timeout, nil)
+	tx := store.db.MustBeginTx(ctx, nil)
 	defer tx.Commit()
-	if order.Status == "PROCESSED" {
+	if order.Status == internal.OrderStatusProcessed {
 		var user internal.User
-		err := tx.GetContext(timeout, &user, `SELECT u.id, u.bill FROM users AS u INNER JOIN orders AS s ON u.id = s.user_id 
+		err := tx.GetContext(ctx, &user, `SELECT u.id, u.bill FROM users AS u INNER JOIN orders AS s ON u.id = s.user_id 
                     WHERE s.number=$1`, order.Number)
 		if err != nil {
-			tx.Rollback()
-			return err
+			err = tx.Rollback()
+			return fmt.Errorf("can't get bill from db %w", err)
 		}
 		sumBill := user.Bill + order.Accrual
-		_, err = tx.ExecContext(timeout, `UPDATE users SET bill = $1 WHERE id = $2`, sumBill, user.ID)
+		_, err = tx.ExecContext(ctx, `UPDATE users SET bill = $1 WHERE id = $2`, sumBill, user.ID)
 		if err != nil {
-			tx.Rollback()
-			return err
+			err = tx.Rollback()
+			return fmt.Errorf("can't update bill from db %w", err)
 		}
 	}
-	_, err := tx.ExecContext(timeout, `UPDATE orders SET status = $1, accrual=$2 WHERE number = $3`, order.Status, order.Accrual, order.Number)
+	_, err := tx.ExecContext(ctx, `UPDATE orders SET status = $1, accrual=$2 WHERE number = $3`, order.Status, order.Accrual, order.Number)
 	if err != nil {
-		tx.Rollback()
-		return err
+		err = tx.Rollback()
+		return fmt.Errorf("can't update order from db %w", err)
 	}
 	return nil
 }
 
 func (store *Store) SaveWithdrawal(ctx context.Context, withdrawal *internal.Withdraw) error {
-	timeout, cancelFunc := context.WithTimeout(ctx, time.Second*5000)
-	defer cancelFunc()
-	tx := store.db.MustBeginTx(timeout, nil)
+	tx := store.db.MustBeginTx(ctx, nil)
 	defer tx.Commit()
 	var user internal.User
-	err := tx.GetContext(timeout, &user, "SELECT * FROM users WHERE id=$1", withdrawal.UserID)
+	err := tx.GetContext(ctx, &user, "SELECT * FROM users WHERE id=$1", withdrawal.UserID)
 	if err != nil {
-		tx.Rollback()
+		err = tx.Rollback()
 		return fmt.Errorf("can't get user from db %w", err)
 	}
 	if user.Bill < withdrawal.Sum {
 		return ErrNotEnoughAmount
 	}
-	_, err = tx.NamedExecContext(timeout, `INSERT INTO withdrawals (id, create_at, order_num, sum, user_id) VALUES (:id, :create_at, :order_num, :sum, :user_id)`, withdrawal)
+	_, err = tx.NamedExecContext(ctx, `INSERT INTO withdrawals (id, create_at, order_num, sum, user_id) VALUES (:id, :create_at, :order_num, :sum, :user_id)`, withdrawal)
 	if err != nil {
-		tx.Rollback()
+		err = tx.Rollback()
 		return fmt.Errorf("can't save withdrawal to db %w", err)
 	}
 	sumBill := user.Bill - withdrawal.Sum
-	_, err = tx.ExecContext(timeout, `UPDATE users SET bill = $1 WHERE id = $2`, sumBill, withdrawal.UserID)
+	_, err = tx.ExecContext(ctx, `UPDATE users SET bill = $1 WHERE id = $2`, sumBill, withdrawal.UserID)
 	if err != nil {
-		tx.Rollback()
+		err = tx.Rollback()
 		return fmt.Errorf("can't update user bill at db %w", err)
 	}
 	return nil
 }
 
 func (store *Store) GetWithdrawals(ctx context.Context, userID uuid.UUID) (*[]internal.Withdraw, error) {
-	timeout, cancelFunc := context.WithTimeout(ctx, time.Second*5)
-	defer cancelFunc()
-
 	var withdrawals []internal.Withdraw
-	err := store.db.SelectContext(timeout, &withdrawals, `SELECT * FROM withdrawals WHERE user_id=$1 
+	err := store.db.SelectContext(ctx, &withdrawals, `SELECT * FROM withdrawals WHERE user_id=$1 
                      ORDER BY create_at DESC `, userID)
 	if err != nil {
 		return nil, fmt.Errorf("can't get orders from db %w", err)
@@ -207,11 +178,8 @@ func (store *Store) GetWithdrawals(ctx context.Context, userID uuid.UUID) (*[]in
 }
 
 func (store *Store) GetUser(ctx context.Context, id uuid.UUID) (*internal.User, error) {
-	timeout, cancelFunc := context.WithTimeout(ctx, time.Second*5)
-	defer cancelFunc()
-
 	var user internal.User
-	err := store.db.GetContext(timeout, &user, `SELECT * FROM users WHERE id=$1`, id)
+	err := store.db.GetContext(ctx, &user, `SELECT * FROM users WHERE id=$1`, id)
 	if err != nil {
 		return nil, fmt.Errorf("can't get user from db %w", err)
 	}

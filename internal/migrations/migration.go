@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/bonus2k/go-musthave-diploma-tpl/cmd/gophermart/internal"
-	"github.com/bonus2k/go-musthave-diploma-tpl/cmd/gophermart/internal/utils"
+	"github.com/bonus2k/go-musthave-diploma-tpl/internal"
+	"github.com/bonus2k/go-musthave-diploma-tpl/internal/utils"
 	"github.com/golang-migrate/migrate/v4"
 	mpgx "github.com/golang-migrate/migrate/v4/database/pgx/v5"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-const migrationsPath = "file://cmd/gophermart/internal/migrations/sql"
+const migrationsPath = "file://internal/migrations/sql"
 
 func Start(connect string) error {
 	dataBase, err := sql.Open("pgx", connect)

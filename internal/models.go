@@ -15,12 +15,12 @@ type User struct {
 }
 
 type Order struct {
-	ID       uuid.UUID `db:"id"`
-	CreateAt time.Time `db:"create_at"`
-	Number   int64     `db:"number"`
-	Accrual  float32   `db:"accrual"`
-	Status   Value     `db:"status"`
-	UserID   uuid.UUID `db:"user_id"`
+	ID       uuid.UUID   `db:"id"`
+	CreateAt time.Time   `db:"create_at"`
+	Number   int64       `db:"number"`
+	Accrual  float32     `db:"accrual"`
+	Status   OrderStatus `db:"status"`
+	UserID   uuid.UUID   `db:"user_id"`
 }
 
 type Withdraw struct {
@@ -31,14 +31,14 @@ type Withdraw struct {
 	UserID   uuid.UUID `db:"user_id"`
 }
 
-type Value string
+type OrderStatus string
 
 const (
-	NEW        Value = "NEW"
-	PROCESSING Value = "PROCESSING"
-	INVALID    Value = "INVALID"
-	PROCESSED  Value = "PROCESSED"
-	REGISTERED Value = "REGISTERED"
+	OrderStatusNew        OrderStatus = "NEW"
+	OrderStatusProcessing OrderStatus = "PROCESSING"
+	OrderStatusInvalid    OrderStatus = "INVALID"
+	OrderStatusProcessed  OrderStatus = "PROCESSED"
+	OrderStatusRegistered OrderStatus = "REGISTERED"
 )
 
 type UserDto struct {

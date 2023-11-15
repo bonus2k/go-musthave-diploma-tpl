@@ -2,7 +2,7 @@ package clients
 
 import (
 	"errors"
-	"github.com/bonus2k/go-musthave-diploma-tpl/cmd/gophermart/internal"
+	"github.com/bonus2k/go-musthave-diploma-tpl/internal"
 	"github.com/go-resty/resty/v2"
 	"net/http"
 	"strings"

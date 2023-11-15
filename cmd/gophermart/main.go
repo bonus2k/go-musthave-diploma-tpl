@@ -3,16 +3,22 @@ package main
 import (
 	"crypto/rand"
 	"fmt"
-	"github.com/bonus2k/go-musthave-diploma-tpl/cmd/gophermart/internal"
-	"github.com/bonus2k/go-musthave-diploma-tpl/cmd/gophermart/internal/interfaces/clients"
-	"github.com/bonus2k/go-musthave-diploma-tpl/cmd/gophermart/internal/interfaces/handlers"
-	"github.com/bonus2k/go-musthave-diploma-tpl/cmd/gophermart/internal/migrations"
-	"github.com/bonus2k/go-musthave-diploma-tpl/cmd/gophermart/internal/repositories"
-	"github.com/bonus2k/go-musthave-diploma-tpl/cmd/gophermart/internal/services"
+	"github.com/bonus2k/go-musthave-diploma-tpl/internal"
+	"github.com/bonus2k/go-musthave-diploma-tpl/internal/interfaces/clients"
+	"github.com/bonus2k/go-musthave-diploma-tpl/internal/interfaces/handlers"
+	"github.com/bonus2k/go-musthave-diploma-tpl/internal/migrations"
+	"github.com/bonus2k/go-musthave-diploma-tpl/internal/repositories"
+	"github.com/bonus2k/go-musthave-diploma-tpl/internal/services"
 	"github.com/go-resty/resty/v2"
+	"github.com/jmoiron/sqlx"
 	"net/http"
 	"os"
 	"time"
+)
+
+const (
+	countWorker             = 5
+	retryTimeCheckNewOrders = 5 * time.Second
 )
 
 func main() {
@@ -32,27 +38,31 @@ func main() {
 		os.Exit(1)
 	}
 
-	store, err := repositories.NewStore(cfg.DataBaseURI)
+	db, err := sqlx.Open("pgx", cfg.DataBaseURI)
 	if err != nil {
 		internal.Logf.Errorf("can't connected to DB %v", err)
 		os.Exit(1)
 	}
+	store := repositories.NewStore(db)
 
 	service := services.NewUserService(store)
-	secretKey := make([]byte, 16)
-	_, err = rand.Read(secretKey)
-	if err != nil {
-		internal.Logf.Errorf("it create secretKey has been finished is wrong %v", err)
-		os.Exit(1)
+	secretKey := []byte(cfg.SecretKey)
+	if len(secretKey) < 16 {
+		secretKey = make([]byte, 16)
+		_, err = rand.Read(secretKey)
+		if err != nil {
+			internal.Logf.Errorf("it create secretKey has been finished is wrong %v", err)
+			os.Exit(1)
+		}
 	}
 
 	internal.Logf.Infof("starting integration to: %s", cfg.AccrualURI)
 	client := resty.New()
 	accrual := clients.NewClientAccrual(client, cfg.AccrualURI)
-	ticker := time.NewTicker(5 * time.Second)
+	ticker := time.NewTicker(retryTimeCheckNewOrders)
 	worker := services.NewPoolWorker(accrual, service)
 	go func() {
-		worker.StarIntegration(5, ticker)
+		worker.StarIntegration(countWorker, ticker)
 	}()
 
 	internal.Logf.Infof("starting HTTP server on address: %s", cfg.ConnectAddr)

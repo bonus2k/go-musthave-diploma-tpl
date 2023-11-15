@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/bonus2k/go-musthave-diploma-tpl/cmd/gophermart/internal"
-	"github.com/bonus2k/go-musthave-diploma-tpl/cmd/gophermart/internal/repositories"
-	"github.com/bonus2k/go-musthave-diploma-tpl/cmd/gophermart/internal/utils"
+	"github.com/bonus2k/go-musthave-diploma-tpl/internal"
+	"github.com/bonus2k/go-musthave-diploma-tpl/internal/repositories"
+	"github.com/bonus2k/go-musthave-diploma-tpl/internal/utils"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"strconv"
@@ -47,7 +47,7 @@ func (us *UserService) AddOrder(ctx context.Context, id string, orderID string) 
 	if err != nil {
 		return err
 	}
-	order := &internal.Order{ID: uuid.New(), CreateAt: time.Now(), Number: int64(luna), Status: internal.NEW, UserID: userID}
+	order := &internal.Order{ID: uuid.New(), CreateAt: time.Now(), Number: int64(luna), Status: internal.OrderStatusNew, UserID: userID}
 	_, err = us.db.AddOrder(ctx, order)
 	if err != nil {
 		return err
@@ -114,7 +114,7 @@ func (us *UserService) UpdateOrder(accrual *internal.AccrualDto) {
 		internal.Logf.Errorf("parse accrual number %s", accrual.Order)
 		return
 	}
-	order := &internal.Order{Number: int64(number), Accrual: accrual.Accrual, Status: internal.Value(accrual.Status)}
+	order := &internal.Order{Number: int64(number), Accrual: accrual.Accrual, Status: internal.OrderStatus(accrual.Status)}
 	err = us.db.UpdateOrder(context.Background(), order)
 	if err != nil {
 		internal.Log.Error("update order", zap.Error(err))

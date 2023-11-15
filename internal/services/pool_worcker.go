@@ -3,8 +3,8 @@ package services
 import (
 	"errors"
 	"fmt"
-	"github.com/bonus2k/go-musthave-diploma-tpl/cmd/gophermart/internal"
-	"github.com/bonus2k/go-musthave-diploma-tpl/cmd/gophermart/internal/interfaces/clients"
+	"github.com/bonus2k/go-musthave-diploma-tpl/internal"
+	"github.com/bonus2k/go-musthave-diploma-tpl/internal/interfaces/clients"
 	"go.uber.org/zap"
 	"time"
 )
