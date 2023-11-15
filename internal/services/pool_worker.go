@@ -9,6 +9,8 @@ import (
 	"time"
 )
 
+const timeoutErrTooManyRequests = 2 * time.Minute
+
 type PoolWorker struct {
 	client      *clients.ClientAccrual
 	serviceUser *UserService
@@ -75,7 +77,7 @@ func (p *PoolWorker) worker(name int) chan struct{} {
 				p.serviceUser.UpdateOrder(accrual)
 			case <-pause:
 				internal.Logf.Debugf("worker %d do pause", name)
-				time.Sleep(2 * time.Minute)
+				time.Sleep(timeoutErrTooManyRequests)
 			}
 		}
 	}()
