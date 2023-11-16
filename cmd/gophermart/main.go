@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"github.com/bonus2k/go-musthave-diploma-tpl/internal"
 	"github.com/bonus2k/go-musthave-diploma-tpl/internal/interfaces/clients"
@@ -22,12 +23,13 @@ const (
 )
 
 func main() {
+	fmt.Fprintln(os.Stdout, "starting server...")
 	if err := parseFlags(); err != nil {
 		fmt.Fprint(os.Stderr, "can't parse flags\n", err)
 		os.Exit(1)
 	}
 
-	if err := internal.NewLogger(cfg.LogLevel); err != nil {
+	if err := internal.InitLogger(cfg.LogLevel); err != nil {
 		internal.Logf.Errorf("can't create logger %v", err)
 		os.Exit(1)
 	}
@@ -46,8 +48,8 @@ func main() {
 	store := repositories.NewStore(db)
 
 	service := services.NewUserService(store)
-	secretKey := []byte(cfg.SecretKey)
-	if len(secretKey) < 16 {
+	secretKey, err := base64.StdEncoding.DecodeString(cfg.SecretKey)
+	if err != nil || len(secretKey) < 16 {
 		secretKey = make([]byte, 16)
 		_, err = rand.Read(secretKey)
 		if err != nil {

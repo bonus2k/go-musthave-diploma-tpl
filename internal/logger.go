@@ -27,7 +27,7 @@ var encoderConfig = zapcore.EncoderConfig{
 	EncodeCaller:   zapcore.ShortCallerEncoder,
 }
 
-func NewLogger(level string) error {
+func InitLogger(level string) error {
 	logLevel, err := zap.ParseAtomicLevel(level)
 	if err != nil {
 		return fmt.Errorf("can't parse log level; %w", err)

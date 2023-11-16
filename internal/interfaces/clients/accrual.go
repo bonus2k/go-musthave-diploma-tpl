@@ -23,7 +23,7 @@ func (ca *ClientAccrual) CheckAccrual(number string) (*internal.AccrualDto, erro
 		SetResult(&accrual).
 		SetRawPathParam("number", number).
 		Get(ca.serverURL + "/api/orders/{number}")
-	if strings.Contains(response.Status(), http.StatusText(http.StatusTooManyRequests)) {
+	if response.StatusCode() == http.StatusTooManyRequests {
 		return nil, ErrTooManyRequests
 	}
 	if strings.Contains(response.Status(), http.StatusText(http.StatusNoContent)) {

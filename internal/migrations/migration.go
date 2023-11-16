@@ -34,7 +34,7 @@ func Start(connect string) error {
 	}
 
 	if err = migrateSQL(dataBase); err != nil {
-		panic(err)
+		return err
 	}
 	internal.Log.Info("migration successfully finished")
 	return nil
