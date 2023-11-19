@@ -20,6 +20,7 @@ import (
 const (
 	countWorker             = 5
 	retryTimeCheckNewOrders = 5 * time.Second
+	migrationsPath          = "file://internal/migrations/sql"
 )
 
 func main() {
@@ -34,7 +35,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	err := migrations.Start(cfg.DataBaseURI)
+	err := migrations.Start(cfg.DataBaseURI, migrationsPath)
 	if err != nil {
 		internal.Logf.Errorf("migration of data to DB is failed %v", err)
 		os.Exit(1)

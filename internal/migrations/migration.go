@@ -14,9 +14,7 @@ import (
 	"time"
 )
 
-const migrationsPath = "file://internal/migrations/sql"
-
-func Start(connect string) error {
+func Start(connect string, migrationsPath string) error {
 	dataBase, err := sql.Open("pgx", connect)
 	if err != nil {
 		return fmt.Errorf("can't open connection to db %w", err)
@@ -33,7 +31,7 @@ func Start(connect string) error {
 		return fmt.Errorf("can't connected to db %w", err)
 	}
 
-	if err = migrateSQL(dataBase); err != nil {
+	if err = migrateSQL(dataBase, migrationsPath); err != nil {
 		return err
 	}
 	internal.Log.Info("migration successfully finished")
@@ -46,7 +44,7 @@ func establishConnection(db *sql.DB) error {
 	return db.PingContext(ctx)
 }
 
-func migrateSQL(db *sql.DB) error {
+func migrateSQL(db *sql.DB, migrationsPath string) error {
 	driver, err := mpgx.WithInstance(db, &mpgx.Config{})
 	if err != nil {
 		return err
