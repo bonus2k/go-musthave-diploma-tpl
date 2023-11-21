@@ -28,6 +28,7 @@ func (container *PostgresContainer) InitData() (*sqlx.DB, error) {
 		log.Printf("err open connection to db %v", err)
 		return nil, err
 	}
+	db.MustExec(`TRUNCATE public.schema_migrations RESTART IDENTITY CASCADE`)
 	log.Println("init data", container.getDSN())
 	err = migrations.Start(container.getDSN(), migrationsInitData)
 	if err != nil {

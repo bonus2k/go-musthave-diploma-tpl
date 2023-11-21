@@ -100,21 +100,6 @@ func (store *Store) GetOrders(ctx context.Context, userID uuid.UUID) (*[]interna
 	return &orders, nil
 }
 
-func (store *Store) GetOrder(ctx context.Context, login string, number int64) (*internal.Order, error) {
-	var user internal.User
-	err := store.db.SelectContext(ctx, &user, `SELECT * FROM users WHERE login=$1`, login)
-	if err != nil {
-		return nil, fmt.Errorf("can't get user from db %w", err)
-	}
-	var orders internal.Order
-	err = store.db.SelectContext(ctx, &orders, `SELECT * FROM orders WHERE user_id=$1 AND number=$2`,
-		user.ID, number)
-	if err != nil {
-		return nil, fmt.Errorf("can't get orders from db %w", err)
-	}
-	return &orders, nil
-}
-
 func (store *Store) GetOrdersNotProcessed(ctx context.Context) (*[]internal.Order, error) {
 	var orders []internal.Order
 	err := store.db.SelectContext(ctx, &orders,
