@@ -74,7 +74,10 @@ func (p *PoolWorker) worker(name int) chan struct{} {
 					break
 				}
 				internal.Logf.Debugf("worker %d, save %v in order", name, accrual)
-				p.serviceUser.UpdateOrder(accrual)
+				err = p.serviceUser.UpdateOrder(accrual)
+				if err != nil {
+					p.Err <- fmt.Errorf("error worker %d %w", name, err)
+				}
 			case <-pause:
 				internal.Logf.Debugf("worker %d do pause", name)
 				time.Sleep(timeoutErrTooManyRequests)

@@ -8,17 +8,16 @@ import (
 	"github.com/bonus2k/go-musthave-diploma-tpl/internal/repositories"
 	"github.com/bonus2k/go-musthave-diploma-tpl/internal/utils"
 	"github.com/google/uuid"
-	"go.uber.org/zap"
 	"strconv"
 	"strings"
 	"time"
 )
 
 type UserService struct {
-	db *repositories.Store
+	db repositories.Store
 }
 
-func NewUserService(storage *repositories.Store) *UserService {
+func NewUserService(storage repositories.Store) *UserService {
 	return &UserService{db: storage}
 }
 
@@ -108,17 +107,17 @@ func (us *UserService) GetOrders(ctx context.Context, id string) (*[]internal.Or
 	return &ordersDto, nil
 }
 
-func (us *UserService) UpdateOrder(accrual *internal.AccrualDto) {
+func (us *UserService) UpdateOrder(accrual *internal.AccrualDto) error {
 	number, err := strconv.Atoi(accrual.Order)
 	if err != nil {
-		internal.Logf.Errorf("parse accrual number %s", accrual.Order)
-		return
+		return fmt.Errorf("parse accrual number %s, %w", accrual.Order, err)
 	}
 	order := &internal.Order{Number: int64(number), Accrual: accrual.Accrual, Status: internal.OrderStatus(accrual.Status)}
 	err = us.db.UpdateOrder(context.Background(), order)
 	if err != nil {
-		internal.Log.Error("update order", zap.Error(err))
+		return err
 	}
+	return nil
 }
 
 func (us *UserService) GetWithdrawals(ctx context.Context, id string) (*[]internal.WithdrawDto, error) {

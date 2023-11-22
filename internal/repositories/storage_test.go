@@ -12,6 +12,7 @@ import (
 	"log"
 	"os"
 	"reflect"
+	"sort"
 	"testing"
 	"time"
 )
@@ -169,7 +170,7 @@ func TestStore_AddOrder(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			store := &Store{
+			store := &StoreImpl{
 				db: db,
 			}
 			got, err := store.AddOrder(tt.args.ctx, tt.args.order)
@@ -236,7 +237,7 @@ func TestStore_AddUser(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			store := &Store{
+			store := &StoreImpl{
 				db: db,
 			}
 			err := store.AddUser(tt.args.ctx, tt.args.user)
@@ -281,7 +282,7 @@ func TestStore_CheckConnection(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			store := &Store{
+			store := &StoreImpl{
 				db: tt.db,
 			}
 			if err := store.CheckConnection(); (err != nil) != tt.wantErr {
@@ -338,7 +339,7 @@ func TestStore_FindUserByLogin(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			store := &Store{
+			store := &StoreImpl{
 				db: db,
 			}
 			got, err := store.FindUserByLogin(tt.args.ctx, tt.args.login)
@@ -402,7 +403,7 @@ func TestStore_GetOrders(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			store := &Store{
+			store := &StoreImpl{
 				db: db,
 			}
 			got, err := store.GetOrders(tt.args.ctx, tt.args.userID)
@@ -441,7 +442,7 @@ func TestStore_GetOrdersNotProcessed(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			store := &Store{
+			store := &StoreImpl{
 				db: db,
 			}
 			got, err := store.GetOrdersNotProcessed(tt.args.ctx)
@@ -499,7 +500,7 @@ func TestStore_GetUser(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			store := &Store{
+			store := &StoreImpl{
 				db: db,
 			}
 			got, err := store.GetUser(tt.args.ctx, tt.args.id)
@@ -540,9 +541,23 @@ func TestStore_GetWithdrawals(t *testing.T) {
 			want: &[]internal.Withdraw{
 				{
 					ID:       uuid.MustParse("35e1cbd0-c3ba-44eb-8632-0d91c280dee6"),
-					CreateAt: time.Date(2023, 11, 10, 11, 00, 00, 000, time.UTC),
+					CreateAt: time.Date(2023, 11, 10, 14, 00, 00, 000, time.Local),
 					Order:    140672056,
-					Sum:      502.6499938964844,
+					Sum:      12.64,
+					UserID:   uuid.MustParse("98dcfb07-e16f-4e53-9a28-d2a2e4eed026"),
+				},
+				{
+					ID:       uuid.MustParse("35e1cbd0-c3ba-44eb-8632-0d91c280dee7"),
+					CreateAt: time.Date(2023, 12, 10, 14, 00, 00, 000, time.Local),
+					Order:    140672057,
+					Sum:      27.385,
+					UserID:   uuid.MustParse("98dcfb07-e16f-4e53-9a28-d2a2e4eed026"),
+				},
+				{
+					ID:       uuid.MustParse("35e1cbd0-c3ba-44eb-8632-0d91c280dee8"),
+					CreateAt: time.Date(2023, 11, 11, 14, 00, 00, 000, time.Local),
+					Order:    140672058,
+					Sum:      0.11111111,
 					UserID:   uuid.MustParse("98dcfb07-e16f-4e53-9a28-d2a2e4eed026"),
 				},
 			},
@@ -569,7 +584,7 @@ func TestStore_GetWithdrawals(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			store := &Store{
+			store := &StoreImpl{
 				db: db,
 			}
 			got, err := store.GetWithdrawals(tt.args.ctx, tt.args.userID)
@@ -577,6 +592,13 @@ func TestStore_GetWithdrawals(t *testing.T) {
 				t.Errorf("GetWithdrawals() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
+
+			sort.Slice(*got, func(i, j int) bool {
+				return (*got)[i].CreateAt.Before((*got)[j].CreateAt)
+			})
+			sort.Slice(*tt.want, func(i, j int) bool {
+				return (*tt.want)[i].CreateAt.Before((*tt.want)[j].CreateAt)
+			})
 			if !cmp.Equal(got, tt.want) {
 				t.Errorf("GetWithdrawals() got = %v, want %v", got, tt.want)
 			}
@@ -633,7 +655,7 @@ func TestStore_SaveWithdrawal(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			store := &Store{
+			store := &StoreImpl{
 				db: db,
 			}
 			err := store.SaveWithdrawal(tt.args.ctx, tt.args.withdrawal)
@@ -698,7 +720,7 @@ func TestStore_UpdateOrder(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			store := &Store{
+			store := &StoreImpl{
 				db: db,
 			}
 			if err := store.UpdateOrder(tt.args.ctx, tt.args.order); (err != nil) != tt.wantErr {

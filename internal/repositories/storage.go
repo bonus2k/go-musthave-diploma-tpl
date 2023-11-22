@@ -14,21 +14,21 @@ import (
 	"time"
 )
 
-type Store struct {
+type StoreImpl struct {
 	db *sqlx.DB
 }
 
-func NewStore(db *sqlx.DB) *Store {
-	return &Store{db: db}
+func NewStore(db *sqlx.DB) Store {
+	return &StoreImpl{db: db}
 }
 
-func (store *Store) CheckConnection() error {
+func (store *StoreImpl) CheckConnection() error {
 	ctx, cancelFunc := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFunc()
 	return store.db.PingContext(ctx)
 }
 
-func (store *Store) AddUser(ctx context.Context, user *internal.User) error {
+func (store *StoreImpl) AddUser(ctx context.Context, user *internal.User) error {
 	var count int
 	err := store.db.GetContext(ctx, &count, `SELECT count(*) FROM users WHERE login=$1`, user.Login)
 	if err != nil {
@@ -46,7 +46,7 @@ func (store *Store) AddUser(ctx context.Context, user *internal.User) error {
 	return nil
 }
 
-func (store *Store) FindUserByLogin(ctx context.Context, login string) (*internal.User, error) {
+func (store *StoreImpl) FindUserByLogin(ctx context.Context, login string) (*internal.User, error) {
 	var user internal.User
 	err := store.db.GetContext(ctx, &user, `SELECT * FROM users WHERE login=$1`, login)
 	if err != nil {
@@ -58,7 +58,7 @@ func (store *Store) FindUserByLogin(ctx context.Context, login string) (*interna
 	return &user, nil
 }
 
-func (store *Store) AddOrder(ctx context.Context, order *internal.Order) (*internal.Order, error) {
+func (store *StoreImpl) AddOrder(ctx context.Context, order *internal.Order) (*internal.Order, error) {
 	_, err := store.db.NamedExecContext(ctx,
 		`INSERT INTO orders (id, create_at, number, accrual, status, user_id) 
 			VALUES (:id, :create_at, :number, :accrual, :status, :user_id)`,
@@ -89,7 +89,7 @@ func (store *Store) AddOrder(ctx context.Context, order *internal.Order) (*inter
 	return nil, fmt.Errorf("can't add order from db %w", err)
 }
 
-func (store *Store) GetOrders(ctx context.Context, userID uuid.UUID) (*[]internal.Order, error) {
+func (store *StoreImpl) GetOrders(ctx context.Context, userID uuid.UUID) (*[]internal.Order, error) {
 	var orders []internal.Order
 	err := store.db.SelectContext(ctx, &orders,
 		`SELECT * FROM orders WHERE user_id=$1 ORDER BY create_at DESC`,
@@ -100,7 +100,7 @@ func (store *Store) GetOrders(ctx context.Context, userID uuid.UUID) (*[]interna
 	return &orders, nil
 }
 
-func (store *Store) GetOrdersNotProcessed(ctx context.Context) (*[]internal.Order, error) {
+func (store *StoreImpl) GetOrdersNotProcessed(ctx context.Context) (*[]internal.Order, error) {
 	var orders []internal.Order
 	err := store.db.SelectContext(ctx, &orders,
 		`SELECT * FROM orders WHERE status !=$1 AND status !=$2`,
@@ -111,7 +111,7 @@ func (store *Store) GetOrdersNotProcessed(ctx context.Context) (*[]internal.Orde
 	return &orders, nil
 }
 
-func (store *Store) UpdateOrder(ctx context.Context, order *internal.Order) error {
+func (store *StoreImpl) UpdateOrder(ctx context.Context, order *internal.Order) error {
 	tx := store.db.MustBeginTx(ctx, nil)
 	defer tx.Commit()
 	if order.Status == internal.OrderStatusProcessed {
@@ -139,7 +139,7 @@ func (store *Store) UpdateOrder(ctx context.Context, order *internal.Order) erro
 	return nil
 }
 
-func (store *Store) SaveWithdrawal(ctx context.Context, withdrawal *internal.Withdraw) error {
+func (store *StoreImpl) SaveWithdrawal(ctx context.Context, withdrawal *internal.Withdraw) error {
 	tx := store.db.MustBeginTx(ctx, nil)
 	defer tx.Commit()
 	var user internal.User
@@ -166,7 +166,7 @@ func (store *Store) SaveWithdrawal(ctx context.Context, withdrawal *internal.Wit
 	return nil
 }
 
-func (store *Store) GetWithdrawals(ctx context.Context, userID uuid.UUID) (*[]internal.Withdraw, error) {
+func (store *StoreImpl) GetWithdrawals(ctx context.Context, userID uuid.UUID) (*[]internal.Withdraw, error) {
 	var withdrawals []internal.Withdraw
 	err := store.db.SelectContext(ctx, &withdrawals, `SELECT * FROM withdrawals WHERE user_id=$1 
                      ORDER BY create_at DESC `, userID)
@@ -176,13 +176,26 @@ func (store *Store) GetWithdrawals(ctx context.Context, userID uuid.UUID) (*[]in
 	return &withdrawals, nil
 }
 
-func (store *Store) GetUser(ctx context.Context, id uuid.UUID) (*internal.User, error) {
+func (store *StoreImpl) GetUser(ctx context.Context, id uuid.UUID) (*internal.User, error) {
 	var user internal.User
 	err := store.db.GetContext(ctx, &user, `SELECT * FROM users WHERE id=$1`, id)
 	if err != nil {
 		return nil, fmt.Errorf("can't get user from db %w", err)
 	}
 	return &user, nil
+}
+
+type Store interface {
+	CheckConnection() error
+	AddUser(ctx context.Context, user *internal.User) error
+	FindUserByLogin(ctx context.Context, login string) (*internal.User, error)
+	AddOrder(ctx context.Context, order *internal.Order) (*internal.Order, error)
+	GetOrders(ctx context.Context, userID uuid.UUID) (*[]internal.Order, error)
+	GetOrdersNotProcessed(ctx context.Context) (*[]internal.Order, error)
+	UpdateOrder(ctx context.Context, order *internal.Order) error
+	SaveWithdrawal(ctx context.Context, withdrawal *internal.Withdraw) error
+	GetWithdrawals(ctx context.Context, userID uuid.UUID) (*[]internal.Withdraw, error)
+	GetUser(ctx context.Context, id uuid.UUID) (*internal.User, error)
 }
 
 var ErrUserIsExist = errors.New("user is exist")
