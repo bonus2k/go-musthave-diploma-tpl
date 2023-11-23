@@ -166,6 +166,7 @@ func TestHandlerUser_AddOrder(t *testing.T) {
 
 			testServices.handlerUser.AddOrder(responseRecorder, request)
 			result := responseRecorder.Result()
+			defer result.Body.Close()
 			assert.Equal(t, tt.statusCode, result.StatusCode)
 		})
 	}
@@ -236,6 +237,7 @@ func TestHandlerUser_AddWithdraw(t *testing.T) {
 
 			testServices.handlerUser.AddWithdraw(responseRecorder, request)
 			result := responseRecorder.Result()
+			defer result.Body.Close()
 			assert.Equal(t, tt.statusCode, result.StatusCode)
 		})
 	}
@@ -559,6 +561,7 @@ func TestHandlerUser_Login(t *testing.T) {
 
 			testServices.handlerUser.Login(responseRecorder, request)
 			result := responseRecorder.Result()
+			defer result.Body.Close()
 			cookies := result.Cookies()
 
 			assert.Equal(t, tt.statusCode, result.StatusCode)
@@ -628,6 +631,7 @@ func TestHandlerUser_RegisterUser(t *testing.T) {
 
 			testServices.handlerUser.RegisterUser(responseRecorder, request)
 			result := responseRecorder.Result()
+			defer result.Body.Close()
 			cookies := result.Cookies()
 
 			assert.Equal(t, tt.statusCode, result.StatusCode)
