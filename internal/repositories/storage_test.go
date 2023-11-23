@@ -53,8 +53,7 @@ func TestMain(m *testing.M) {
 func TestNewStore(t *testing.T) {
 	db, err := container.InitData()
 	if err != nil {
-		log.Printf("err TestNewStore %v", err)
-		os.Exit(1)
+		t.Skipf("err TestNewStore %v", err)
 	}
 
 	tests := []struct {
@@ -82,8 +81,7 @@ func TestNewStore(t *testing.T) {
 func TestStore_AddOrder(t *testing.T) {
 	db, err := container.InitData()
 	if err != nil {
-		log.Printf("err TestStore_AddOrder %v", err)
-		os.Exit(1)
+		t.Skipf("err TestStore_AddOrder %v", err)
 	}
 
 	type args struct {
@@ -192,8 +190,7 @@ func TestStore_AddOrder(t *testing.T) {
 func TestStore_AddUser(t *testing.T) {
 	db, err := container.InitData()
 	if err != nil {
-		log.Printf("err TestStore_AddUser %v", err)
-		os.Exit(1)
+		t.Skipf("err TestStore_AddUser %v", err)
 	}
 
 	type args struct {
@@ -255,13 +252,11 @@ func TestStore_AddUser(t *testing.T) {
 func TestStore_CheckConnection(t *testing.T) {
 	db, err := container.InitData()
 	if err != nil {
-		log.Printf("err TestStore_CheckConnection %v", err)
-		os.Exit(1)
+		t.Skipf("err TestStore_CheckConnection %v", err)
 	}
 	wrongDB, err := sqlx.Open("pgx", "postgres://user:user@localhost:12345/postgres?sslmode=disable")
 	if err != nil {
-		log.Printf("err TestStore_CheckConnection %v", err)
-		os.Exit(1)
+		t.Skipf("err TestStore_CheckConnection %v", err)
 	}
 
 	tests := []struct {
@@ -295,8 +290,7 @@ func TestStore_CheckConnection(t *testing.T) {
 func TestStore_FindUserByLogin(t *testing.T) {
 	db, err := container.InitData()
 	if err != nil {
-		log.Printf("err TestStore_FindUserByLogin %v", err)
-		os.Exit(1)
+		t.Skipf("err TestStore_FindUserByLogin %v", err)
 	}
 
 	type args struct {
@@ -360,8 +354,7 @@ func TestStore_FindUserByLogin(t *testing.T) {
 func TestStore_GetOrders(t *testing.T) {
 	db, err := container.InitData()
 	if err != nil {
-		log.Printf("err TestStore_GetOrders %v", err)
-		os.Exit(1)
+		t.Skipf("err TestStore_GetOrders %v", err)
 	}
 	type args struct {
 		ctx    context.Context
@@ -421,8 +414,7 @@ func TestStore_GetOrders(t *testing.T) {
 func TestStore_GetOrdersNotProcessed(t *testing.T) {
 	db, err := container.InitData()
 	if err != nil {
-		log.Printf("TestStore_GetOrdersNotProcessed %v", err)
-		os.Exit(1)
+		t.Skipf("TestStore_GetOrdersNotProcessed %v", err)
 	}
 	type args struct {
 		ctx context.Context
@@ -460,8 +452,7 @@ func TestStore_GetOrdersNotProcessed(t *testing.T) {
 func TestStore_GetUser(t *testing.T) {
 	db, err := container.InitData()
 	if err != nil {
-		log.Printf("TestStore_GetUser %v", err)
-		os.Exit(1)
+		t.Skipf("TestStore_GetUser %v", err)
 	}
 	type args struct {
 		ctx context.Context
@@ -518,8 +509,7 @@ func TestStore_GetUser(t *testing.T) {
 func TestStore_GetWithdrawals(t *testing.T) {
 	db, err := container.InitData()
 	if err != nil {
-		log.Printf("TestStore_GetWithdrawals %v", err)
-		os.Exit(1)
+		t.Skipf("TestStore_GetWithdrawals %v", err)
 	}
 	var withdrawals []internal.Withdraw
 	type args struct {
@@ -609,8 +599,7 @@ func TestStore_GetWithdrawals(t *testing.T) {
 func TestStore_SaveWithdrawal(t *testing.T) {
 	db, err := container.InitData()
 	if err != nil {
-		log.Printf("TestStore_SaveWithdrawal %v", err)
-		os.Exit(1)
+		t.Skipf("TestStore_SaveWithdrawal %v", err)
 	}
 	type args struct {
 		ctx        context.Context
@@ -672,8 +661,7 @@ func TestStore_SaveWithdrawal(t *testing.T) {
 func TestStore_UpdateOrder(t *testing.T) {
 	db, err := container.InitData()
 	if err != nil {
-		log.Printf("TestStore_UpdateOrder %v", err)
-		os.Exit(1)
+		t.Skipf("TestStore_UpdateOrder %v", err)
 	}
 	type args struct {
 		ctx   context.Context

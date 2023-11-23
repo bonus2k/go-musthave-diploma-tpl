@@ -23,7 +23,7 @@ func TestRetryAfterError(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "func with err",
+			name: "func without err",
 			f: func() error {
 				return nil
 			},
