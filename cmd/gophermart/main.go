@@ -70,7 +70,7 @@ func main() {
 
 	internal.Logf.Infof("starting HTTP server on address: %s", cfg.ConnectAddr)
 	handlerUser := handlers.NewHandlerUser(service, secretKey)
-	router := handlers.UserRouter(handlerUser)
+	router := handlers.UserRouter(handlerUser, secretKey)
 	err = http.ListenAndServe(cfg.ConnectAddr, router)
 	if err != nil {
 		internal.Logf.Errorf("error HTTP server %v", err)

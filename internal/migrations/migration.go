@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/bonus2k/go-musthave-diploma-tpl/internal"
-	"github.com/bonus2k/go-musthave-diploma-tpl/internal/utils"
+	errors2 "github.com/bonus2k/go-musthave-diploma-tpl/internal/errors"
 	"github.com/golang-migrate/migrate/v4"
 	mpgx "github.com/golang-migrate/migrate/v4/database/pgx/v5"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
@@ -27,7 +27,7 @@ func Start(connect string, migrationsPath string) error {
 	}()
 
 	f := func() error { return establishConnection(dataBase) }
-	if err = utils.RetryAfterError(f); err != nil {
+	if err = errors2.RetryAfterError(f); err != nil {
 		return fmt.Errorf("can't connected to db %w", err)
 	}
 

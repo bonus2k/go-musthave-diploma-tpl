@@ -2,11 +2,11 @@ package services
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/bonus2k/go-musthave-diploma-tpl/internal"
+	"github.com/bonus2k/go-musthave-diploma-tpl/internal/auth"
+	errors2 "github.com/bonus2k/go-musthave-diploma-tpl/internal/errors"
 	"github.com/bonus2k/go-musthave-diploma-tpl/internal/repositories"
-	"github.com/bonus2k/go-musthave-diploma-tpl/internal/utils"
 	"github.com/google/uuid"
 	"strconv"
 	"strings"
@@ -23,10 +23,10 @@ func NewUserService(storage repositories.Store) *UserService {
 
 func (us *UserService) CreateNewUser(ctx context.Context, user *internal.UserDto) (*internal.User, error) {
 	if isIllegalUserArgument(user) {
-		return nil, ErrIllegalUserArgument
+		return nil, errors2.ErrIllegalUserArgument
 	}
 	internal.Log.Debug("create user")
-	password, err := utils.SignPassword(user.Pass)
+	password, err := auth.SignPassword(user.Pass)
 	if err != nil {
 		return nil, fmt.Errorf("can't create password, %w", err)
 	}
@@ -40,7 +40,7 @@ func (us *UserService) CreateNewUser(ctx context.Context, user *internal.UserDto
 func (us *UserService) AddOrder(ctx context.Context, id string, orderID string) error {
 	luna, ok := isLuna(orderID)
 	if !ok {
-		return ErrIllegalOrder
+		return errors2.ErrIllegalOrder
 	}
 	userID, err := uuid.Parse(id)
 	if err != nil {
@@ -59,12 +59,12 @@ func (us *UserService) LoginUser(ctx context.Context, user internal.UserDto) (*u
 	if err != nil {
 		return nil, err
 	}
-	ok, err := utils.CheckPassword(user.Pass, login.Password)
+	ok, err := auth.CheckPassword(user.Pass, login.Password)
 	if err != nil {
 		return nil, err
 	}
 	if !ok {
-		return nil, ErrWrongAuth
+		return nil, errors2.ErrWrongAuth
 	}
 	return &login.ID, nil
 }
@@ -172,7 +172,7 @@ func (us *UserService) AddWithdraw(ctx context.Context, dto internal.WithdrawDto
 
 	luna, ok := isLuna(dto.Order)
 	if !ok {
-		return ErrIllegalOrder
+		return errors2.ErrIllegalOrder
 	}
 
 	withdraw := &internal.Withdraw{
@@ -221,7 +221,3 @@ func isIllegalUserArgument(user *internal.UserDto) bool {
 	}
 	return false
 }
-
-var ErrIllegalUserArgument = errors.New("illegal user argument")
-var ErrIllegalOrder = errors.New("illegal order")
-var ErrWrongAuth = errors.New("wrong authorization")

@@ -29,8 +29,9 @@ func (p *PoolWorker) StarIntegration(countWorker int, requestTime *time.Ticker) 
 	pauses := make([]chan struct{}, 0)
 	for i := 0; i < countWorker; i++ {
 		name := i
-		p := p.worker(name)
-		pauses = append(pauses, p)
+		pause := make(chan struct{})
+		p.worker(name, pause)
+		pauses = append(pauses, pause)
 	}
 
 	go func() {
@@ -60,29 +61,27 @@ func (p *PoolWorker) StarIntegration(countWorker int, requestTime *time.Ticker) 
 	}
 }
 
-func (p *PoolWorker) worker(name int) chan struct{} {
-	pause := make(chan struct{})
+func (p *PoolWorker) worker(nameWorker int, pause chan struct{}) {
 	go func() {
 		defer close(pause)
 		for {
 			select {
 			case order := <-p.orderIn:
-				internal.Logf.Debugf("worker %d, order %s send request to accrual services", name, order)
+				internal.Logf.Debugf("worker %d, order %s send request to accrual services", nameWorker, order)
 				accrual, err := p.client.CheckAccrual(order)
 				if err != nil {
-					p.Err <- fmt.Errorf("error worker %d %w", name, err)
+					p.Err <- fmt.Errorf("error worker %d %w", nameWorker, err)
 					break
 				}
-				internal.Logf.Debugf("worker %d, save %v in order", name, accrual)
+				internal.Logf.Debugf("worker %d, save %v in order", nameWorker, accrual)
 				err = p.serviceUser.UpdateOrder(accrual)
 				if err != nil {
-					p.Err <- fmt.Errorf("error worker %d %w", name, err)
+					p.Err <- fmt.Errorf("error worker %d %w", nameWorker, err)
 				}
 			case <-pause:
-				internal.Logf.Debugf("worker %d do pause", name)
+				internal.Logf.Debugf("worker %d do pause", nameWorker)
 				time.Sleep(timeoutErrTooManyRequests)
 			}
 		}
 	}()
-	return pause
 }

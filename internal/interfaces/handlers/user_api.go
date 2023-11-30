@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/bonus2k/go-musthave-diploma-tpl/internal"
-	"github.com/bonus2k/go-musthave-diploma-tpl/internal/repositories"
+	errors2 "github.com/bonus2k/go-musthave-diploma-tpl/internal/errors"
 	"github.com/bonus2k/go-musthave-diploma-tpl/internal/services"
 	"go.uber.org/zap"
 	"io"
@@ -39,11 +39,11 @@ func (hu *HandlerUser) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	newUser, err := hu.us.CreateNewUser(r.Context(), &user)
 	if err != nil {
 		internal.Log.Error("user hasn't been created", zap.Error(err))
-		if errors.Is(err, services.ErrIllegalUserArgument) {
+		if errors.Is(err, errors2.ErrIllegalUserArgument) {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		if errors.Is(err, repositories.ErrUserIsExist) {
+		if errors.Is(err, errors2.ErrUserIsExist) {
 			w.WriteHeader(http.StatusConflict)
 			return
 		}
@@ -71,7 +71,7 @@ func (hu *HandlerUser) Login(w http.ResponseWriter, r *http.Request) {
 	userID, err := hu.us.LoginUser(r.Context(), user)
 	if err != nil {
 		internal.Log.Error("authorization fault", zap.Error(err))
-		if errors.Is(err, services.ErrWrongAuth) || errors.Is(err, repositories.ErrUserNotFound) {
+		if errors.Is(err, errors2.ErrWrongAuth) || errors.Is(err, errors2.ErrUserNotFound) {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
@@ -84,15 +84,12 @@ func (hu *HandlerUser) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 func (hu *HandlerUser) AddOrder(w http.ResponseWriter, r *http.Request) {
+	userID := r.Header.Get("user")
 	if r.Header.Get("Content-Type") != "text/plain" {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	userID, err := readSigned(r, hu.secret)
-	if err != nil {
-		internal.Log.Error("cookie is wrong", zap.Error(err))
-		w.WriteHeader(http.StatusUnauthorized)
-	}
+
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		internal.Log.Error("can't get body", zap.Error(err))
@@ -101,15 +98,15 @@ func (hu *HandlerUser) AddOrder(w http.ResponseWriter, r *http.Request) {
 	}
 	if err = hu.us.AddOrder(r.Context(), userID, string(body)); err != nil {
 		internal.Log.Error("add order", zap.Error(err))
-		if errors.Is(err, repositories.ErrOrderIsExistThisUser) {
+		if errors.Is(err, errors2.ErrOrderIsExistThisUser) {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
-		if errors.Is(err, repositories.ErrOrderIsExistAnotherUser) {
+		if errors.Is(err, errors2.ErrOrderIsExistAnotherUser) {
 			w.WriteHeader(http.StatusConflict)
 			return
 		}
-		if errors.Is(err, services.ErrIllegalOrder) {
+		if errors.Is(err, errors2.ErrIllegalOrder) {
 			w.WriteHeader(http.StatusUnprocessableEntity)
 			return
 		}
@@ -120,13 +117,7 @@ func (hu *HandlerUser) AddOrder(w http.ResponseWriter, r *http.Request) {
 }
 
 func (hu *HandlerUser) GetOrders(w http.ResponseWriter, r *http.Request) {
-	userID, err := readSigned(r, hu.secret)
-	if err != nil {
-		internal.Log.Error("cookie is wrong", zap.Error(err))
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-
+	userID := r.Header.Get("user")
 	orders, err := hu.us.GetOrders(r.Context(), userID)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -147,13 +138,7 @@ func (hu *HandlerUser) GetOrders(w http.ResponseWriter, r *http.Request) {
 }
 
 func (hu *HandlerUser) GetWithdrawals(w http.ResponseWriter, r *http.Request) {
-	userID, err := readSigned(r, hu.secret)
-	if err != nil {
-		internal.Log.Error("cookie is wrong", zap.Error(err))
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-
+	userID := r.Header.Get("user")
 	withdrawals, err := hu.us.GetWithdrawals(r.Context(), userID)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -174,12 +159,7 @@ func (hu *HandlerUser) GetWithdrawals(w http.ResponseWriter, r *http.Request) {
 }
 
 func (hu *HandlerUser) GetBalance(w http.ResponseWriter, r *http.Request) {
-	userID, err := readSigned(r, hu.secret)
-	if err != nil {
-		internal.Log.Error("cookie is wrong", zap.Error(err))
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
+	userID := r.Header.Get("user")
 	balance, err := hu.us.GetBalance(r.Context(), userID)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -196,12 +176,7 @@ func (hu *HandlerUser) GetBalance(w http.ResponseWriter, r *http.Request) {
 }
 
 func (hu *HandlerUser) AddWithdraw(w http.ResponseWriter, r *http.Request) {
-	userID, err := readSigned(r, hu.secret)
-	if err != nil {
-		internal.Log.Error("cookie is wrong", zap.Error(err))
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
+	userID := r.Header.Get("user")
 	internal.Log.Debug("decoding message")
 	var dto internal.WithdrawDto
 	decoder := json.NewDecoder(r.Body)
@@ -211,13 +186,13 @@ func (hu *HandlerUser) AddWithdraw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = hu.us.AddWithdraw(r.Context(), dto, userID); err != nil {
+	if err := hu.us.AddWithdraw(r.Context(), dto, userID); err != nil {
 		internal.Log.Error("add withdraw", zap.Error(err))
-		if errors.Is(err, repositories.ErrNotEnoughAmount) {
+		if errors.Is(err, errors2.ErrNotEnoughAmount) {
 			w.WriteHeader(http.StatusPaymentRequired)
 			return
 		}
-		if errors.Is(err, services.ErrIllegalOrder) {
+		if errors.Is(err, errors2.ErrIllegalOrder) {
 			w.WriteHeader(http.StatusUnprocessableEntity)
 		}
 		w.WriteHeader(http.StatusInternalServerError)
@@ -244,33 +219,3 @@ func writeSigned(value string, secret []byte) http.Cookie {
 	cookie.Value = base64.URLEncoding.EncodeToString([]byte(value))
 	return cookie
 }
-
-func readSigned(r *http.Request, secretKey []byte) (string, error) {
-	cookie, err := r.Cookie("gophermart")
-	if err != nil {
-		return "", err
-	}
-	signedValue, err := base64.URLEncoding.DecodeString(cookie.Value)
-	if err != nil {
-		return "", ErrInvalidValue
-	}
-	if len(signedValue) < sha256.Size {
-		return "", ErrInvalidValue
-	}
-
-	signature := signedValue[:sha256.Size]
-	value := signedValue[sha256.Size:]
-
-	mac := hmac.New(sha256.New, secretKey)
-	mac.Write([]byte(cookie.Name))
-	mac.Write(value)
-	expectedSignature := mac.Sum(nil)
-
-	if !hmac.Equal([]byte(signature), expectedSignature) {
-		return "", ErrInvalidValue
-	}
-
-	return string(value), nil
-}
-
-var ErrInvalidValue = errors.New("invalid cookie value")

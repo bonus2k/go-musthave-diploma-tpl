@@ -2,8 +2,8 @@ package handlers
 
 import (
 	"github.com/bonus2k/go-musthave-diploma-tpl/internal"
+	"github.com/bonus2k/go-musthave-diploma-tpl/internal/errors"
 	mock "github.com/bonus2k/go-musthave-diploma-tpl/internal/mocks"
-	"github.com/bonus2k/go-musthave-diploma-tpl/internal/repositories"
 	"github.com/bonus2k/go-musthave-diploma-tpl/internal/services"
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
@@ -29,31 +29,24 @@ func init() {
 }
 
 type testData struct {
-	mockStore     *mock.MockStore
-	handlerUser   *HandlerUser
-	userID1       string
-	cookie1       http.Cookie
-	userID2       string
-	cookie2       http.Cookie
-	wrongCookie   http.Cookie
-	wrongIDCookie http.Cookie
+	mockStore   *mock.MockStore
+	handlerUser *HandlerUser
+	userID1     string
+	cookie1     http.Cookie
+	userID2     string
 }
 
 func initTestServices(t *testing.T) *testData {
 	sign := []byte{116, 79, 253, 154, 106, 127, 165, 70, 139, 56, 218, 213, 105, 253, 76}
-	wrongSign := []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
 	ctrl := gomock.NewController(t)
 	mockStore := mock.NewMockStore(ctrl)
 	service := services.NewUserService(mockStore)
 	return &testData{
-		mockStore:     mockStore,
-		handlerUser:   NewHandlerUser(service, sign),
-		userID1:       "98dcfb07-e16f-4e53-9a28-d2a2e4eed026",
-		cookie1:       writeSigned("98dcfb07-e16f-4e53-9a28-d2a2e4eed026", sign),
-		userID2:       "98dcfb07-e16f-4e53-9a28-d2a2e4eed027",
-		cookie2:       writeSigned("98dcfb07-e16f-4e53-9a28-d2a2e4eed027", sign),
-		wrongCookie:   writeSigned("123456 ", wrongSign),
-		wrongIDCookie: writeSigned("123156", sign),
+		mockStore:   mockStore,
+		handlerUser: NewHandlerUser(service, sign),
+		userID1:     "98dcfb07-e16f-4e53-9a28-d2a2e4eed026",
+		cookie1:     writeSigned("98dcfb07-e16f-4e53-9a28-d2a2e4eed026", sign),
+		userID2:     "98dcfb07-e16f-4e53-9a28-d2a2e4eed027",
 	}
 }
 
@@ -99,60 +92,53 @@ func TestHandlerUser_AddOrder(t *testing.T) {
 
 	testServices.mockStore.EXPECT().
 		AddOrder(gomock.Any(), &mock.MatchOrder{Order: &internal.Order{Number: 3533841638640315}}).
-		Return(nil, repositories.ErrOrderIsExistAnotherUser).AnyTimes()
+		Return(nil, errors.ErrOrderIsExistAnotherUser).AnyTimes()
 
 	testServices.mockStore.EXPECT().
 		AddOrder(gomock.Any(), &mock.MatchOrder{Order: &internal.Order{Number: 3536137811022331}}).
-		Return(nil, repositories.ErrOrderIsExistThisUser).AnyTimes()
+		Return(nil, errors.ErrOrderIsExistThisUser).AnyTimes()
 
 	tests := []struct {
 		name        string
 		body        string
 		contentType string
 		statusCode  int
-		cookie      *http.Cookie
+		userID      string
 	}{
 		{
 			name:        "add order 400",
 			body:        "4539088167512356",
 			contentType: "application/json",
 			statusCode:  400,
-			cookie:      &testServices.cookie1,
-		},
-		{
-			name:        "add order 401",
-			body:        "4539088167512356",
-			contentType: "text/plain",
-			statusCode:  401,
-			cookie:      &testServices.wrongCookie,
+			userID:      testServices.userID1,
 		},
 		{
 			name:        "add order 200",
 			body:        "3536137811022331",
 			contentType: "text/plain",
 			statusCode:  200,
-			cookie:      &testServices.cookie1,
+			userID:      testServices.userID1,
 		},
 		{
 			name:        "add order 409",
 			body:        "3533841638640315",
 			contentType: "text/plain",
 			statusCode:  409,
-			cookie:      &testServices.cookie1,
+			userID:      testServices.userID1,
 		},
 		{
 			name:        "add order 422",
 			body:        "12345",
 			contentType: "text/plain",
 			statusCode:  422,
-			cookie:      &testServices.cookie1,
+			userID:      testServices.userID1,
 		},
 		{
 			name:        "add order 202",
 			body:        "4539088167512356",
 			contentType: "text/plain",
 			statusCode:  202,
-			cookie:      &testServices.cookie1,
+			userID:      testServices.userID1,
 		},
 	}
 
@@ -160,7 +146,7 @@ func TestHandlerUser_AddOrder(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			request := httptest.NewRequest(http.MethodGet, "/", strings.NewReader(tt.body))
 
-			request.AddCookie(tt.cookie)
+			request.Header.Set("user", tt.userID)
 			request.Header.Set("Content-Type", tt.contentType)
 			responseRecorder := httptest.NewRecorder()
 
@@ -177,7 +163,7 @@ func TestHandlerUser_AddWithdraw(t *testing.T) {
 
 	testServices.mockStore.EXPECT().
 		SaveWithdrawal(gomock.Any(), &mock.MatchWithdraw{Withdraw: &internal.Withdraw{Order: 4539088167512356}}).
-		Return(repositories.ErrNotEnoughAmount).AnyTimes()
+		Return(errors.ErrNotEnoughAmount).AnyTimes()
 
 	testServices.mockStore.EXPECT().
 		SaveWithdrawal(gomock.Any(), &mock.MatchWithdraw{Withdraw: &internal.Withdraw{Order: 3533841638640315}}).
@@ -188,42 +174,35 @@ func TestHandlerUser_AddWithdraw(t *testing.T) {
 		body        string
 		contentType string
 		statusCode  int
-		cookie      *http.Cookie
+		userID      string
 	}{
-		{
-			name:        "AddWithdraw 401",
-			body:        "",
-			contentType: "application/json",
-			statusCode:  401,
-			cookie:      &testServices.wrongCookie,
-		},
 		{
 			name:        "AddWithdraw 500",
 			body:        "",
 			contentType: "application/json",
 			statusCode:  500,
-			cookie:      &testServices.cookie1,
+			userID:      testServices.userID1,
 		},
 		{
 			name:        "AddWithdraw 402",
 			body:        `{"order": "4539088167512356", "sum": 751}`,
 			contentType: "application/json",
 			statusCode:  402,
-			cookie:      &testServices.cookie1,
+			userID:      testServices.userID1,
 		},
 		{
 			name:        "AddWithdraw 422",
 			body:        `{"order": "12345", "sum": 751}`,
 			contentType: "application/json",
 			statusCode:  422,
-			cookie:      &testServices.cookie1,
+			userID:      testServices.userID1,
 		},
 		{
 			name:        "AddWithdraw 200",
 			body:        `{"order": "3533841638640315", "sum": 751}`,
 			contentType: "application/json",
 			statusCode:  200,
-			cookie:      &testServices.cookie1,
+			userID:      testServices.userID1,
 		},
 	}
 
@@ -231,7 +210,7 @@ func TestHandlerUser_AddWithdraw(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			request := httptest.NewRequest(http.MethodGet, "/", strings.NewReader(tt.body))
 
-			request.AddCookie(tt.cookie)
+			request.Header.Set("user", tt.userID)
 			request.Header.Set("Content-Type", tt.contentType)
 			responseRecorder := httptest.NewRecorder()
 
@@ -270,26 +249,20 @@ func TestHandlerUser_GetBalance(t *testing.T) {
 		contentType string
 		statusCode  int
 		wantBody    string
-		cookie      *http.Cookie
+		userID      string
 	}{
-		{
-			name:        "GetBalance 401",
-			contentType: "application/json",
-			statusCode:  401,
-			cookie:      &testServices.wrongCookie,
-		},
 		{
 			name:        "GetBalance 200",
 			contentType: "application/json",
 			statusCode:  200,
-			cookie:      &testServices.cookie1,
+			userID:      testServices.userID1,
 			wantBody:    `{"current":0.001,"withdrawn":12.64}`,
 		},
 		{
 			name:        "GetBalance 500",
 			contentType: "application/json",
 			statusCode:  500,
-			cookie:      &testServices.wrongIDCookie,
+			userID:      "12345",
 		},
 	}
 
@@ -297,7 +270,7 @@ func TestHandlerUser_GetBalance(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			request := httptest.NewRequest(http.MethodGet, "/", strings.NewReader(tt.body))
 
-			request.AddCookie(tt.cookie)
+			request.Header.Set("user", tt.userID)
 			request.Header.Set("Content-Type", tt.contentType)
 			responseRecorder := httptest.NewRecorder()
 
@@ -361,31 +334,25 @@ func TestHandlerUser_GetOrders(t *testing.T) {
 		contentType string
 		statusCode  int
 		wantBody    string
-		cookie      *http.Cookie
+		userID      string
 	}{
-		{
-			name:        "GetOrders 401",
-			contentType: "application/json",
-			statusCode:  401,
-			cookie:      &testServices.wrongCookie,
-		},
 		{
 			name:        "GetOrders 500",
 			contentType: "application/json",
 			statusCode:  500,
-			cookie:      &testServices.wrongIDCookie,
+			userID:      "12345",
 		},
 		{
 			name:        "GetOrders 204",
 			contentType: "application/json",
 			statusCode:  204,
-			cookie:      &testServices.cookie2,
+			userID:      testServices.userID2,
 		},
 		{
 			name:        "GetOrders 200",
 			contentType: "application/json",
 			statusCode:  200,
-			cookie:      &testServices.cookie1,
+			userID:      testServices.userID1,
 			wantBody: `[
 							{"number":"4539088167512356","status":"PROCESSED","accrual":100,"uploaded_at":"2023-01-01T14:01:00+03:00"},
 							{"number":"3536137811022331","status":"NEW","accrual":0,"uploaded_at":"2023-01-01T14:02:00+03:00"},
@@ -398,7 +365,7 @@ func TestHandlerUser_GetOrders(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			request := httptest.NewRequest(http.MethodGet, "/", strings.NewReader(tt.body))
 
-			request.AddCookie(tt.cookie)
+			request.Header.Set("user", tt.userID)
 			request.Header.Set("Content-Type", tt.contentType)
 			responseRecorder := httptest.NewRecorder()
 
@@ -445,31 +412,25 @@ func TestHandlerUser_GetWithdrawals(t *testing.T) {
 		contentType string
 		statusCode  int
 		wantBody    string
-		cookie      *http.Cookie
+		userID      string
 	}{
-		{
-			name:        "GetWithdrawals 401",
-			contentType: "application/json",
-			statusCode:  401,
-			cookie:      &testServices.wrongCookie,
-		},
 		{
 			name:        "GetWithdrawals 500",
 			contentType: "application/json",
 			statusCode:  500,
-			cookie:      &testServices.wrongIDCookie,
+			userID:      "12345",
 		},
 		{
 			name:        "GetWithdrawals 204",
 			contentType: "application/json",
 			statusCode:  204,
-			cookie:      &testServices.cookie2,
+			userID:      testServices.userID2,
 		},
 		{
 			name:        "GetWithdrawals 200",
 			contentType: "application/json",
 			statusCode:  200,
-			cookie:      &testServices.cookie1,
+			userID:      testServices.userID1,
 			wantBody:    `[{"order":"140672056","sum":12.64,"processed_at":"2023-11-10T14:00:00+03:00"}]`,
 		},
 	}
@@ -478,7 +439,7 @@ func TestHandlerUser_GetWithdrawals(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			request := httptest.NewRequest(http.MethodGet, "/", strings.NewReader(tt.body))
 
-			request.AddCookie(tt.cookie)
+			request.Header.Set("user", tt.userID)
 			request.Header.Set("Content-Type", tt.contentType)
 			responseRecorder := httptest.NewRecorder()
 
@@ -582,7 +543,7 @@ func TestHandlerUser_RegisterUser(t *testing.T) {
 
 	testServices.mockStore.EXPECT().
 		AddUser(gomock.Any(), &mock.MatchUser{User: &internal.User{Login: "TestUser2"}}).
-		Return(repositories.ErrUserIsExist).AnyTimes()
+		Return(errors.ErrUserIsExist).AnyTimes()
 
 	tests := []struct {
 		name        string
@@ -640,78 +601,6 @@ func TestHandlerUser_RegisterUser(t *testing.T) {
 				assert.NotEqual(t, cookies[0].Value, "")
 			}
 
-		})
-	}
-}
-
-func Test_readSigned(t *testing.T) {
-	sign := []byte{116, 79, 253, 154, 106, 127, 165, 70, 139, 56, 218, 213, 105, 253, 76}
-
-	type args struct {
-		cookie    *http.Cookie
-		secretKey []byte
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    string
-		wantErr bool
-	}{
-		{
-			name: "readSigned wrong name",
-			args: args{
-				cookie:    &http.Cookie{Name: "uups"},
-				secretKey: sign,
-			},
-			wantErr: true,
-		},
-		{
-			name: "readSigned wrong value",
-			args: args{
-				cookie: &http.Cookie{
-					Name:  "gophermart",
-					Value: "123456",
-				},
-				secretKey: nil,
-			},
-			wantErr: true,
-		},
-		{
-			name: "readSigned wrong secret key",
-			args: args{
-				cookie: &http.Cookie{
-					Name:  "gophermart",
-					Value: "VPnFhpmNlKNCWJqE0g25dR76M2e8mYmKSUM5lKzw8zA0MmYwNTU4Yy0wNGYzLTRlMTEtOWVlMS02ZGU3MTdjYTY5ZTk=",
-				},
-				secretKey: []byte{1, 2, 3, 4, 5, 6, 7},
-			},
-			wantErr: true,
-		},
-		{
-			name: "readSigned correct",
-			args: args{
-				cookie: &http.Cookie{
-					Name:  "gophermart",
-					Value: "VPnFhpmNlKNCWJqE0g25dR76M2e8mYmKSUM5lKzw8zA0MmYwNTU4Yy0wNGYzLTRlMTEtOWVlMS02ZGU3MTdjYTY5ZTk=",
-				},
-				secretKey: sign,
-			},
-			wantErr: false,
-			want:    "42f0558c-04f3-4e11-9ee1-6de717ca69e9",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			request := httptest.NewRequest(http.MethodGet, "/", nil)
-			request.AddCookie(tt.args.cookie)
-			got, err := readSigned(request, tt.args.secretKey)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("readSigned() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if got != tt.want {
-				t.Errorf("readSigned() got = %v, want %v", got, tt.want)
-			}
 		})
 	}
 }

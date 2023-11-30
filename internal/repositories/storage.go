@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/bonus2k/go-musthave-diploma-tpl/internal"
+	errors2 "github.com/bonus2k/go-musthave-diploma-tpl/internal/errors"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -35,7 +36,7 @@ func (store *StoreImpl) AddUser(ctx context.Context, user *internal.User) error 
 		return fmt.Errorf("can't check user is exist %w", err)
 	}
 	if count > 0 {
-		return ErrUserIsExist
+		return errors2.ErrUserIsExist
 	}
 	_, err = store.db.NamedExecContext(ctx,
 		`INSERT INTO users (id, create_at, login, password, bill) VALUES (:id, :create_at, :login, :password, :bill)`,
@@ -51,7 +52,7 @@ func (store *StoreImpl) FindUserByLogin(ctx context.Context, login string) (*int
 	err := store.db.GetContext(ctx, &user, `SELECT * FROM users WHERE login=$1`, login)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrUserNotFound
+			return nil, errors2.ErrUserNotFound
 		}
 		return nil, fmt.Errorf("can't get user from db, %w", err)
 	}
@@ -81,9 +82,9 @@ func (store *StoreImpl) AddOrder(ctx context.Context, order *internal.Order) (*i
 		}
 
 		if existOrder.UserID == order.UserID {
-			return nil, ErrOrderIsExistThisUser
+			return nil, errors2.ErrOrderIsExistThisUser
 		} else {
-			return nil, ErrOrderIsExistAnotherUser
+			return nil, errors2.ErrOrderIsExistAnotherUser
 		}
 	}
 	return nil, fmt.Errorf("can't add order from db %w", err)
@@ -149,7 +150,7 @@ func (store *StoreImpl) SaveWithdrawal(ctx context.Context, withdrawal *internal
 		return fmt.Errorf("can't get user from db %w", err)
 	}
 	if user.Bill < withdrawal.Sum {
-		return ErrNotEnoughAmount
+		return errors2.ErrNotEnoughAmount
 	}
 	_, err = tx.NamedExecContext(ctx, `INSERT INTO withdrawals (id, create_at, order_num, sum, user_id) 
 											VALUES (:id, :create_at, :order_num, :sum, :user_id)`, withdrawal)
@@ -197,9 +198,3 @@ type Store interface {
 	GetWithdrawals(ctx context.Context, userID uuid.UUID) (*[]internal.Withdraw, error)
 	GetUser(ctx context.Context, id uuid.UUID) (*internal.User, error)
 }
-
-var ErrUserIsExist = errors.New("user is exist")
-var ErrUserNotFound = errors.New("user not found")
-var ErrOrderIsExistThisUser = errors.New("this order is exist the user")
-var ErrOrderIsExistAnotherUser = errors.New("this order is exist another user")
-var ErrNotEnoughAmount = errors.New("not enough amount")
