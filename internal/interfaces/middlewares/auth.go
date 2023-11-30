@@ -16,11 +16,9 @@ func Authentication(secretKey []byte) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			userID, err := readSigned(r, secret)
 			if err != nil {
-				if err != nil {
-					internal.Log.Error("cookie is wrong", zap.Error(err))
-					http.Error(w, "cookie is wrong", http.StatusUnauthorized)
-					return
-				}
+				internal.Log.Error("cookie is wrong", zap.Error(err))
+				http.Error(w, "cookie is wrong", http.StatusUnauthorized)
+				return
 			}
 			r.Header.Add("user", userID)
 			h.ServeHTTP(w, r)
